@@ -8,16 +8,31 @@ const G = {
   cam: { yaw: 0, pitch: 0.12, dist: 5.4, pos: new Float32Array(3), fwd: new Float32Array(3), skyR: new Float32Array(3), skyU: new Float32Array(3), vp: M4.create(), view: M4.create(), proj: M4.create(), tx: 0, ty: 0, tz: 0, lastDrag: -9, eye: [0, 2, 5], look: [0, 2, 0], r: [1, 0, 0], u: [0, 1, 0] },
   inp: { jx: 0, jy: 0, keys: {}, stick: null, looks: new Map() },
   mode: 'title', found: new Set(), met: new Set(),
-  set: { quality: 'auto', fps: false, stroke: 1, music: true, cycle: false, trail: true, sens: 1 },
+  set: { fpsCap: 0, res: 1, aa: false, preset: 3, fps: false, stroke: 1, music: true, cycle: false, trail: true, sens: 1 },
   scale: 1, hz: 60, dabs: [], dabT: 0, fire: [], view: null, seat: null, busy: false,
   run: false, riding: false, bike: { has: false, x: 0, y: 0, z: 0, rot: 0, steer: 0, spin: 0, crank: 0, lean: 0, v: 0, bones: new Float32Array(NB * 16), lamp: new Float32Array(3) },
   stars: 0, letters: null, scores: {}, flags: {}, rf: new Float32Array(32), rfT: 0, cap: null, rec: null,
 };
 
-/* ---------- native shell (the iOS app) ---------- */
+const SET0 = { fpsCap: 0, res: 1, aa: false, preset: 3, fps: false, stroke: 1, music: true, cycle: false, trail: true, sens: 1 };
+/* overall picture quality: detail distance, far distance, fog, sky pixels, outline distance, sky cadence, second stroke layer */
+const QP = [
+  { dd: 30, far: 150, fogK: 1.8, sky: 1.6e5, ol: 0, se: 3, s2: 0, glow: 60 },
+  { dd: 42, far: 210, fogK: 1.4, sky: 2.6e5, ol: 16, se: 2, s2: 0, glow: 90 },
+  { dd: 55, far: 290, fogK: 1.15, sky: 4.0e5, ol: 26, se: 2, s2: 1, glow: 130 },
+  { dd: 68, far: 1e9, fogK: 1, sky: 6.0e5, ol: 36, se: 2, s2: 1, glow: 130 },
+  { dd: 85, far: 1e9, fogK: 1, sky: 1.2e6, ol: 50, se: 1, s2: 1, glow: 160 },
+];
+/* ---------- native shells (iOS app, Android app) ---------- */
 const Native = {
-  on: !!window.__native, cbs: {},
-  post(cmd, data, cb) { try { if (cb) this.cbs[cmd] = cb; window.webkit.messageHandlers.native.postMessage(Object.assign({ cmd }, data || {})); return true; } catch (e) { return false; } },
+  on: !!window.__native || !!window.AndroidNative, kind: window.AndroidNative ? 'android' : (window.__native ? 'ios' : 'web'), cbs: {},
+  post(cmd, data, cb) {
+    try {
+      if (cb) this.cbs[cmd] = cb;
+      if (this.kind === 'android') { const A = window.AndroidNative; if (cmd === 'photo') A.savePhoto(data.data); else if (cmd === 'haptic') A.haptic(); else return false; return true; }
+      window.webkit.messageHandlers.native.postMessage(Object.assign({ cmd }, data || {})); return true;
+    } catch (e) { return false; }
+  },
   done(what, ok, msg) { const cb = this.cbs[what]; if (cb) { this.cbs[what] = null; cb(ok, msg); } },
 };
 window.Native = Native;
@@ -364,7 +379,7 @@ function sprites(dt) {
     }
     for (let i = 0; i < G.dabs.length; i++) { const q = G.dabs[i]; q.t += dt; const al = Math.max(0, 1 - q.t / 7) * 0.7; if (al <= 0) continue; const ca = Math.cos(q.a), sa = Math.sin(q.a); R.spr(0, q.x, q.y, q.z, ca * 0.1, 0, -sa * 0.1, sa * q.l, 0, ca * q.l, q.c[0], q.c[1], q.c[2], al); }
   }
-  if (night > 0.02) for (let i = 0; i < w.glows.length; i++) { const g = w.glows[i], d = Math.hypot(g.x - c.pos[0], g.z - c.pos[2]); if (d > 130 || !R.visible(g.x, g.y, g.z, g.s)) continue; const s = g.s * (1 + d * 0.012), k = night * (0.75 + 0.08 * Math.sin(G.time * 3 + g.x)); R.spr(1, g.x, g.y, g.z, r[0] * s, 0, r[2] * s, u[0] * s, u[1] * s, u[2] * s, g.col[0], g.col[1], g.col[2], k); }
+  if (night > 0.02) for (let i = 0; i < w.glows.length; i++) { const g = w.glows[i], d = Math.hypot(g.x - c.pos[0], g.z - c.pos[2]); if (d > QP[G.set.preset].glow || !R.visible(g.x, g.y, g.z, g.s)) continue; const s = g.s * (1 + d * 0.012), k = night * (0.75 + 0.08 * Math.sin(G.time * 3 + g.x)); R.spr(1, g.x, g.y, g.z, r[0] * s, 0, r[2] * s, u[0] * s, u[1] * s, u[2] * s, g.col[0], g.col[1], g.col[2], k); }
   if (night > 0.6 && w.extra.fireflies !== 0) {
     if (!G.fire.length) for (let i = 0; i < 16; i++) G.fire.push({ x: Math.random() * 30 - 15, y: 0.4 + Math.random() * 1.6, z: Math.random() * 30 - 15, ph: Math.random() * 9 });
     for (let i = 0; i < G.fire.length; i++) {
@@ -395,7 +410,7 @@ function sprites(dt) {
 
 /* ---------- frame ---------- */
 function env() {
-  if (Math.abs(G.tod - G.envTod) > 1e-4 || !G.env) { G.env = envAt(G.world.env, G.tod); G.envTod = G.tod; G.env.strokeAmt *= G.set.stroke; }
+  if (Math.abs(G.tod - G.envTod) > 1e-4 || !G.env) { G.env = envAt(G.world.env, G.tod); G.envTod = G.tod; G.env.strokeAmt *= G.set.stroke; G.env.fogD *= QP[G.set.preset].fogK; G.R.skyDirty = true; }
   return G.env;
 }
 function lampAt(w, a, out, amt) {
@@ -403,26 +418,17 @@ function lampAt(w, a, out, amt) {
   if (amt > 0.01) { const L = w.lamps; for (let i = 0; i < L.length; i++) { const l = L[i], dx = l.x - a.x, dz = l.z - a.z; if (dx > l.r || dx < -l.r || dz > l.r || dz < -l.r) continue; const dy = l.y - a.y - 1, d2 = dx * dx + dy * dy + dz * dz; if (d2 < l.r * l.r) { const at = 1 - Math.sqrt(d2) / l.r, k = at * at * l.k * amt; lr += l.col[0] * k; lg += l.col[1] * k; lb += l.col[2] * k; } } }
   out[0] = Math.min(lr, 1.2); out[1] = Math.min(lg, 1.2); out[2] = Math.min(lb, 1.2);
 }
-let lastT = 0, acc = 0, frames = 0, slow = 0, fast = 0;
+let lastT = 0, acc = 0, frames = 0;
 function frame(t) {
   requestAnimationFrame(frame);
   if (G.pause) { lastT = t / 1000; return; }
+  const now = t / 1000, cap = G.set.fpsCap;
+  if (cap && now - lastT < 1 / cap - 0.0016) return; // frame-rate ceiling chosen in settings
   G.fc = (G.fc || 0) + 1;
-  const now = t / 1000; let dt = now - lastT; lastT = now; if (dt > 0.1) dt = 0.1; if (dt <= 0) return;
+  let dt = now - lastT; lastT = now; if (dt > 0.1) dt = 0.1; if (dt <= 0) return;
   G.time += dt;
-  // adaptive resolution: hold the display's refresh rate, give back sharpness whenever there is room
   acc += dt; frames++;
-  if (frames > 10 && dt < 1 / (G.hz * 1.3)) G.hz = dt < 0.0075 ? 144 : dt < 0.0095 ? 120 : dt < 0.0125 ? 90 : G.hz;
-  if (acc >= 0.5) {
-    const fps = frames / acc; acc = 0; frames = 0; G.fps = fps;
-    if (G.set.fps) $('fps').textContent = Math.round(fps) + ' 帧 · ' + G.R.w + '×' + G.R.h + ' · ' + Math.round(G.R.drawn / 3000) + 'k 面';
-    if (G.set.quality !== 'fine' && G.mode !== 'title' && !G.busy && !window.__sync) {
-      const target = G.set.quality === 'fast' ? Math.min(G.hz, 120) : Math.min(G.hz, 60);
-      if (fps < target * 0.88) { slow++; fast = 0; if (slow >= 2) { if (G.scale > 0.72) { G.scale = Math.max(0.72, G.scale - 0.07); resize(); } slow = 0; } }
-      else if (fps > target * 0.965) { fast++; slow = 0; if (fast >= 5 && G.scale < 1) { G.scale = Math.min(1, G.scale + 0.05); fast = 0; resize(); } }
-      else { slow = 0; fast = 0; }
-    }
-  }
+  if (acc >= 0.5) { const fps = frames / acc; acc = 0; frames = 0; G.fps = fps; if (G.set.fps) $('fps').textContent = Math.round(fps) + ' 帧 · ' + G.R.w + '×' + G.R.h + ' · ' + Math.round(G.R.drawn / 3000) + 'k 面'; }
   if (!G.world) return;
   const w = G.world, p = G.player, R = G.R;
   if (G.set.cycle && G.mode === 'play') { G.todT += dt / 80; if (G.todT >= 3) G.todT -= 3; G.tod = G.todT <= 2 ? G.todT : 2 - (G.todT - 2) * 2; }
@@ -433,8 +439,9 @@ function frame(t) {
   const e = env(), c = G.cam, list = G.actors;
   Play.update(dt);
   R.begin(c, e, G.time);
-  R.drawWorld(w.solid);
-  if (w.detail) R.drawWorld(w.detail, w.detailDist * (G.set.quality === 'fast' ? 0.7 : 1));
+  const Q = QP[G.set.preset];
+  R.drawWorld(w.solid, Q.far);
+  if (w.detail) R.drawWorld(w.detail, Q.dd);
   if (w.portalMesh) R.drawPortals(w.portalMesh, w.portals);
   if (w.picMesh) R.drawPics(w.picMesh, w.pics);
   R.beginChars();
@@ -442,13 +449,13 @@ function frame(t) {
     const a = i < 0 ? p : list[i];
     const d = Math.hypot(a.x - c.pos[0], a.z - c.pos[2]); if (d > 110 || !R.visible(a.x, a.y + 0.9 * a.scale, a.z, 1.6 * a.scale)) continue;
     a.animate(G.time); lampAt(w, a, a.lamp, e.lampAmt);
-    R.drawChar(a.model, a.bones, a.lamp, d < 38 ? a.outline * a.scale : 0);
+    R.drawChar(a.model, a.bones, a.lamp, d < Q.ol ? a.outline * a.scale : 0);
   }
   const b = G.bike;
   if (b.has && R.visible(b.x, b.y + 0.6, b.z, 1.4)) {
     if (!G.riding) b.y += (groundY(w, b.x, b.z) - b.y) * Math.min(1, dt * 10);
     bikeBones(b.bones, b.x, b.y, b.z, b.rot, b.lean, b.steer, b.spin, b.crank); lampAt(w, b, b.lamp, e.lampAmt);
-    R.drawChar(model(G.flags.mail ? 'bikeGold' : 'bike'), b.bones, b.lamp, 0.01);
+    R.drawChar(model(G.flags.mail ? 'bikeGold' : 'bike'), b.bones, b.lamp, Q.ol ? 0.01 : 0);
   }
   if (w.water) {
     if (--G.rfT <= 0) {
@@ -477,12 +484,11 @@ function layout() {
 const PX = e => G.rot ? e.clientY : e.clientX, PY = e => G.rot ? window.innerWidth - e.clientX : e.clientY;
 function resize() {
   layout();
-  const dpr = Math.min(window.devicePixelRatio || 1, 3), q = G.set.quality; let eff;
-  // clarity first: native resolution wherever the pixel count allows, and never below a crisp floor
-  if (q === 'fine') eff = dpr; else if (q === 'fast') eff = Math.min(dpr, 1.5) * Math.max(0.8, G.scale);
-  else { const px = G.LW * G.LH * dpr * dpr, base = Math.min(1, Math.sqrt(4.6e6 / px)); eff = Math.max(Math.min(dpr, 1.7), dpr * base * G.scale); }
-  G.R.skyScale = q === 'fine' ? 0.85 : q === 'fast' ? 0.55 : 0.7; G.big = G.LH > 700; $('app').classList.toggle('big', G.big);
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), pts = G.LW * G.LH, budget = [1.3e6, 3.1e6, 1e9][G.set.res];
+  const eff = Math.max(Math.min(dpr, 1), Math.min(dpr, Math.sqrt(budget / pts)));
   G.R.resize(G.LW, G.LH, eff);
+  const Q = QP[G.set.preset]; G.R.skyScale = Math.min(0.85, Math.sqrt(Q.sky / (G.R.w * G.R.h))); G.R.skyEvery = Q.se; G.R.q2 = Q.s2; G.R.skyDirty = true; G.envTod = -1;
+  G.big = G.LH > 700; $('app').classList.toggle('big', G.big);
 }
 
 /* ---------- photo and film ---------- */
@@ -522,13 +528,16 @@ function toggleRecord() {
     return;
   }
   if (G.mode !== 'play') return;
-  if (Native.on) { Native.post('recStart', null, (ok, msg) => { if (ok) { G.rec = { native: true, t0: G.time }; UI.recording(true); } else UI.toast('没有开始录像', msg, 3200); }); return; }
+  if (Native.kind === 'ios') { Native.post('recStart', null, (ok, msg) => { if (ok) { G.rec = { native: true, t0: G.time }; UI.recording(true); } else UI.toast('没有开始录像', msg, 3200); }); return; }
   try {
     const st = $('c').captureStream(60), types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'], type = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
     if (!type) throw new Error('unsupported');
     const mr = new MediaRecorder(st, { mimeType: type, videoBitsPerSecond: 12e6 }), chunks = [];
-    mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-    mr.onstop = () => UI.film(URL.createObjectURL(new Blob(chunks, { type })));
+    const droid = Native.kind === 'android'; let chain = Promise.resolve();
+    if (droid) window.AndroidNative.recBegin(type.split(';')[0]);
+    const b64 = blob => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => ok(''); fr.readAsDataURL(blob); });
+    mr.ondataavailable = e => { if (!e.data || !e.data.size) return; if (droid) chain = chain.then(() => b64(e.data)).then(s => window.AndroidNative.recChunk(s)); else chunks.push(e.data); };
+    mr.onstop = () => { if (droid) { Native.cbs.recStop = (ok, msg) => UI.toast(ok ? '录像已存入相册' : '录像没有存下来', ok ? null : msg, 3200); chain.then(() => window.AndroidNative.recEnd()); } else UI.film(URL.createObjectURL(new Blob(chunks, { type }))); };
     mr.start(500); G.rec = { mr, t0: G.time }; UI.recording(true);
   } catch (e) { UI.toast('这里不能录像', '装上 App 后可以直接录到相册', 3600); }
 }
@@ -575,9 +584,10 @@ function bindInput() {
 
 function boot() {
   const cv = $('c');
-  try { G.R = new Renderer(cv); } catch (e) { $('err').textContent = '这个浏览器不支持 WebGL2，无法打开画布。' + (e && e.message ? '（' + String(e.message).slice(0, 120) + '）' : ''); $('err').hidden = false; return; }
+  Object.assign(G.set, SET0, store.get('set2', {}));
+  try { G.R = new Renderer(cv, G.set.aa); } catch (e) { $('err').textContent = '这个浏览器不支持 WebGL2，无法打开画布。' + (e && e.message ? '（' + String(e.message).slice(0, 120) + '）' : ''); $('err').hidden = false; return; }
   const R = G.R; R.makeStroke('oil', 'oil', 7); R.makeStroke('dots', 'dots', 11); R.makeStroke('paper', 'paper', 5); R.makeStroke('dab', 'dab', 3);
-  Object.assign(G.set, store.get('set', {})); G.found = new Set(store.get('found', [])); G.met = new Set(store.get('met', []));
+  G.found = new Set(store.get('found', [])); G.met = new Set(store.get('met', []));
   G.stars = store.get('stars', 0); G.letters = store.get('letters', null); G.scores = store.get('scores', {}); G.flags = store.get('flags', {});
   G.scale = 1; resize();
   G.player = new Actor(model('player'), { x: 0, z: 0, rot: Math.PI, outline: 0.012, extra: { def: {} } });

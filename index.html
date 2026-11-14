@@ -119,6 +119,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
 .go.here { border-color: var(--vermilion); box-shadow: inset 0 0 0 1px var(--vermilion); }
 .go.pr { background: var(--gold); }
 #sDismiss { margin-top: 16px; width: 100%; }
+.grow { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 14px; margin-top: 12px; }
+.grow label { font-size: 15px; font-weight: 600; letter-spacing: .1em; }
+.inl { display: flex; align-items: center; gap: 14px; } .inl .tog { min-width: 110px; } .inl span { font-size: 12px; opacity: .6; }
+.togs.two { grid-template-columns: 1fr 1.6fr; } .tog.lab { display: grid; place-items: center; cursor: pointer; }
+.sp { flex: 1; }
+#app.big .grow { grid-template-columns: 130px 1fr; margin-top: 16px; } #app.big .grow label { font-size: 18px; }
 .note { font-size: 12px !important; opacity: .65; line-height: 1.7 !important; text-align: left !important; margin-top: 8px !important; }
 .art { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid rgba(23, 33, 79, .14); }
 .art.pr { background: rgba(230, 194, 86, .25); }
@@ -221,16 +227,21 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
 </div></div>
 
 <div class="scrim" id="set"><div class="sheet">
-  <div class="head"><h2>设置</h2><button class="x" data-close>关闭</button></div>
+  <div class="head"><h2>设置</h2><span class="sp"></span><button class="x" id="sReset">恢复默认</button><button class="x" data-close>关闭</button></div>
+  <div class="grow"><label>帧率</label><div class="seg" id="sFpsCap"><button>30</button><button>60</button><button>90</button><button>120</button><button>极致</button></div></div>
+  <div class="grow"><label>分辨率</label><div class="seg" id="sRes"><button>节能</button><button>高</button><button>超高</button></div></div>
+  <div class="grow"><label>抗锯齿</label><div class="inl"><button class="tog" id="sAA">开启</button><span>切换后重新载入</span></div></div>
+  <div class="grow"><label>画面总质量</label><div class="seg" id="sPreset"><button>节能</button><button>流畅</button><button>标准</button><button>高清</button><button>极致</button></div></div>
+  <p class="note">"极致"帧率不设上限，跟随屏幕刷新率（60、90 或 120）。帧数不够时，先把分辨率降一档，再降画面总质量。系统开着"低电量模式"时，手机会把画面限制在 30 帧。</p>
   <h3>去往另一幅画</h3><div id="sGo"></div>
   <div class="cols">
     <div><h3>天色</h3><div class="seg" id="sTod"><button>白天</button><button>黄昏</button><button>夜晚</button><button>流转</button></div></div>
     <div><h3>视角灵敏度</h3><div class="seg" id="sSens"><button>慢</button><button>适中</button><button>快</button></div></div>
-    <div><h3>画质与帧率</h3><div class="seg" id="sQuality"><button>自动</button><button>流畅</button><button>最清晰</button></div></div>
     <div><h3>笔触</h3><div class="seg" id="sStroke"><button>淡</button><button>适中</button><button>厚涂</button></div></div>
+    <div><h3>音乐</h3><div class="togs two"><button class="tog" id="sMusic">开启</button><label class="tog lab" for="fMusic">换成我的音乐</label></div></div>
   </div>
-  <p class="note">"自动"会在满帧的前提下尽量提高清晰度；"最清晰"按屏幕原生分辨率渲染。</p>
-  <h3>其他</h3><div class="togs"><button class="tog" id="sMusic">音乐</button><button class="tog" id="sTrail">颜料脚印</button><button class="tog" id="sFps">显示帧率</button></div>
+  <input type="file" id="fMusic" accept="audio/*,video/*" hidden>
+  <h3>其他</h3><div class="togs"><button class="tog" id="sTrail">颜料脚印</button><button class="tog" id="sFps">显示帧率</button><button class="tog" id="sOwn" hidden>换回原来的音乐</button></div>
   <button class="btn" id="sDismiss" hidden></button>
 </div></div>
 
@@ -654,12 +665,13 @@ in vec3 vPos; in vec3 vNrm; in vec4 vCol; in vec4 vLamp; in vec2 vFog;
 uniform sampler2D uStroke;
 uniform vec3 uSunDir, uLight, uShade, uFogCol, uTint, uGlowCol, uNA, uNB; uniform float uNMix;
 uniform vec4 uP; // strokeScale, strokeAmt, lampAmt, glow
-uniform float uShadowAmt; uniform vec2 uRes;
+uniform float uShadowAmt; uniform vec2 uRes; uniform float uQ;
 out vec4 o;
 void main(){
   vec3 n = normalize(vNrm); vec3 an = abs(n);
   vec2 uv = an.y > 0.55 ? vPos.xz : (an.x > an.z ? vPos.zy : vPos.xy);
-  vec4 s = mix(texture(uStroke, uv*uP.x), texture(uStroke, uv*uP.x*0.21 + 0.31), smoothstep(14.0, 55.0, vFog.y));
+  vec4 s = texture(uStroke, uv*uP.x);
+  if (uQ > 0.5) s = mix(s, texture(uStroke, uv*uP.x*0.21 + 0.31), smoothstep(14.0, 55.0, vFog.y));
   float sh = 1.0 - vLamp.a*uShadowAmt;
   float ndl = dot(n, uSunDir)*0.5 + 0.5;
   float l = smoothstep(0.36, 0.64, ndl + (s.r-0.5)*0.34)*sh;
@@ -987,9 +999,9 @@ void main(){
 }`;
 
 class Renderer {
-  constructor(canvas) {
+  constructor(canvas, aa) {
     this.canvas = canvas;
-    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: true, stencil: false, powerPreference: 'high-performance', desynchronized: true, preserveDrawingBuffer: false });
+    const gl = canvas.getContext('webgl2', { antialias: !!aa, alpha: false, depth: true, stencil: false, powerPreference: 'high-performance', desynchronized: true, preserveDrawingBuffer: false });
     if (!gl) throw new Error('WebGL2 unavailable');
     this.gl = gl;
     this.prog = {};
@@ -1122,7 +1134,10 @@ class Renderer {
   begin(cam, env, time) {
     const gl = this.gl;
     this.cam = cam; this.env = env; this.time = time;
-    this.paintSky(cam, env, time);
+    { // repaint the sky only when the view turned, the light changed, or its turn came up
+      const f = cam.fwd, l = this.lastF || (this.lastF = new Float32Array(3)); this.skyN = (this.skyN || 0) + 1;
+      if (this.skyDirty || this.skyN >= (this.skyEvery || 1) || Math.abs(f[0] - l[0]) + Math.abs(f[1] - l[1]) + Math.abs(f[2] - l[2]) > 0.0012) { this.paintSky(cam, env, time); l[0] = f[0]; l[1] = f[1]; l[2] = f[2]; this.skyN = 0; this.skyDirty = false; }
+    }
     gl.viewport(0, 0, this.w, this.h);
     gl.depthMask(true); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
     gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -1137,7 +1152,7 @@ class Renderer {
     gl.uniform3fv(u.uSunDir, e.sunDir); gl.uniform3fv(u.uLight, e.light); gl.uniform3fv(u.uShade, e.shade);
     gl.uniform3fv(u.uFogCol, e.fog); gl.uniform3fv(u.uTint, e.tint);
     gl.uniform4f(u.uP, e.strokeScale, e.strokeAmt, e.lampAmt, e.glow); gl.uniform1f(u.uShadowAmt, e.shadowAmt);
-    gl.uniform1i(u.uStroke, 0); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h); gl.uniform3fv(u.uGlowCol, e.glowCol); gl.uniform3fv(u.uNA, e.nightA); gl.uniform3fv(u.uNB, e.nightB); gl.uniform1f(u.uNMix, e.nightMix);
+    gl.uniform1i(u.uStroke, 0); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h); gl.uniform1f(u.uQ, this.q2 ? 1 : 0); gl.uniform3fv(u.uGlowCol, e.glowCol); gl.uniform3fv(u.uNA, e.nightA); gl.uniform3fv(u.uNB, e.nightB); gl.uniform1f(u.uNMix, e.nightMix);
     gl.bindVertexArray(m.vao);
     if (m.chunks) {
       const md = maxDist || 1e9, cx = c.pos[0], cz = c.pos[2], C = this.mdC, O = this.mdO; let n = 0;
@@ -3038,21 +3053,28 @@ const UI = {
     document.querySelectorAll('[data-close]').forEach(b => tap(b, () => UI.closeAll()));
     document.querySelectorAll('.scrim').forEach(s => tap(s, e => { if (e.target === s) UI.closeAll(); }));
     document.querySelectorAll('.sheet').forEach(dragScroll);
-    const seg = (id, key, vals, after) => $(id).querySelectorAll('button').forEach((b, i) => tap(b, () => { G.set[key] = vals[i]; store.set('set', G.set); UI.syncSet(); if (after) after(); }));
-    seg('sQuality', 'quality', ['auto', 'fast', 'fine'], () => { G.scale = 1; resize(); });
+    const seg = (id, key, vals, after) => $(id).querySelectorAll('button').forEach((b, i) => tap(b, () => { G.set[key] = vals[i]; store.set('set2', G.set); UI.syncSet(); if (after) after(); }));
+    seg('sFpsCap', 'fpsCap', [30, 60, 90, 120, 0]);
+    seg('sRes', 'res', [0, 1, 2], () => resize());
+    seg('sPreset', 'preset', [0, 1, 2, 3, 4], () => resize());
+    tap($('sAA'), () => { G.set.aa = !G.set.aa; store.set('set2', G.set); UI.syncSet(); UI.toast('抗锯齿' + (G.set.aa ? '已开启' : '已关闭'), '重新载入后生效', 1600); setTimeout(() => location.reload(), 900); });
+    tap($('sReset'), () => { const keep = G.set.aa; Object.assign(G.set, SET0); store.set('set2', G.set); UI.syncSet(); resize(); $('fps').hidden = true; Music.toggle(true); if (keep) setTimeout(() => location.reload(), 600); });
+    $('fMusic').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) { Music.setCustom(f, f.name, true); UI.syncSet(); UI.toast('换上了你的音乐', f.name.slice(0, 28), 2600); } e.target.value = ''; });
+    tap($('sOwn'), () => { Music.clearCustom(); UI.syncSet(); });
     seg('sStroke', 'stroke', [0.55, 1, 1.35], () => { G.envTod = -1; });
     seg('sSens', 'sens', [0.65, 1, 1.5]);
     $('sTod').querySelectorAll('button').forEach((b, i) => tap(b, () => { if (i === 3) G.set.cycle = !G.set.cycle; else { G.set.cycle = false; G.todT = i; } UI.syncSet(); }));
-    const tog = (id, key, after) => tap($(id), () => { G.set[key] = !G.set[key]; store.set('set', G.set); UI.syncSet(); if (after) after(); });
+    const tog = (id, key, after) => tap($(id), () => { G.set[key] = !G.set[key]; store.set('set2', G.set); UI.syncSet(); if (after) after(); });
     tog('sFps', 'fps', () => { $('fps').hidden = !G.set.fps; }); tog('sMusic', 'music', () => Music.toggle(G.set.music)); tog('sTrail', 'trail');
     tap($('sDismiss'), () => { UI.closeAll(); dismiss(); });
     const go = $('sGo');
     Object.keys(WORLD_INFO).forEach(id => { if (!WORLDS[id]) return; const b = document.createElement('button'); b.className = 'go'; b.innerHTML = '<b>' + WORLD_INFO[id].n + '</b><span>' + WORLD_INFO[id].sub + '</span>'; b.dataset.w = id; tap(b, () => { UI.closeAll(); if (G.wid === id) return; G.mode = 'travel'; UI.hud(false); travel(id, null); }); go.appendChild(b); });
-    $('fps').hidden = !G.set.fps; UI.syncSet(); UI.modes(); UI.chips();
+    $('fps').hidden = !G.set.fps; Music.restore(); UI.syncSet(); UI.modes(); UI.chips();
   },
   syncSet() {
     const s = G.set, on = (id, i) => $(id).querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
-    on('sQuality', ['auto', 'fast', 'fine'].indexOf(s.quality)); on('sStroke', [0.55, 1, 1.35].indexOf(s.stroke)); on('sSens', [0.65, 1, 1.5].indexOf(s.sens)); on('sTod', s.cycle ? 3 : Math.round(G.todT) % 3);
+    on('sFpsCap', [30, 60, 90, 120, 0].indexOf(s.fpsCap)); on('sRes', s.res); on('sPreset', s.preset); $('sAA').classList.toggle('on', s.aa); $('sOwn').hidden = !Music.aud;
+    on('sStroke', [0.55, 1, 1.35].indexOf(s.stroke)); on('sSens', [0.65, 1, 1.5].indexOf(s.sens)); on('sTod', s.cycle ? 3 : Math.round(G.todT) % 3);
     $('sFps').classList.toggle('on', s.fps); $('sMusic').classList.toggle('on', s.music); $('sTrail').classList.toggle('on', s.trail);
     $('sDismiss').hidden = !G.companion; if (G.companion) $('sDismiss').textContent = '请' + PEOPLE[G.companion.who].n + '留步';
     $('sGo').querySelectorAll('button').forEach(b => b.classList.toggle('here', b.dataset.w === G.wid));
@@ -3147,8 +3169,13 @@ const SCALES = {
   museum: [196, 220, 246.94, 293.66, 329.63, 392, 440, 493.88], fog: [174.61, 196, 233.08, 261.63, 293.66, 349.23, 392],
 };
 const Music = {
-  ac: null, out: null, wid: 'town', step: 0, timer: null, last: 3,
+  ac: null, out: null, wid: 'town', step: 0, timer: null, last: 3, aud: null,
+  db(fn) { try { const rq = indexedDB.open('hzmb', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv'); rq.onsuccess = () => { try { fn(rq.result.transaction('kv', 'readwrite').objectStore('kv')); } catch (e) { } }; } catch (e) { } },
+  setCustom(blob, name, save) { if (this.aud) this.aud.pause(); const a = this.aud = new Audio(URL.createObjectURL(blob)); a.loop = true; a.volume = 0.85; if (save) this.db(st => st.put({ blob, name }, 'bgm')); if (G.set.music && G.mode !== 'title') a.play().catch(() => { }); },
+  clearCustom() { if (this.aud) { this.aud.pause(); this.aud = null; } this.db(st => st.delete('bgm')); },
+  restore() { this.db(st => { const rq = st.get('bgm'); rq.onsuccess = () => { const v = rq.result; if (v && v.blob) Music.setCustom(v.blob, v.name, false); }; }); },
   start() {
+    if (this.aud && G.set.music && this.aud.paused) this.aud.play().catch(() => { });
     if (this.ac || !G.set.music) { if (this.ac && this.ac.state === 'suspended') this.ac.resume().catch(() => { }); return; }
     try {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -3168,7 +3195,7 @@ const Music = {
   loop() {
     if (!this.ac) return;
     const ac = this.ac, sc = SCALES[this.wid] || SCALES.town, t = ac.currentTime + 0.06, pl = this.wid === 'jiangshan' || this.wid === 'hokusai';
-    if (G.set.music && ac.state === 'running') {
+    if (G.set.music && ac.state === 'running' && !(this.aud && !this.aud.paused)) {
       const s = this.step++;
       if (s % 8 === 0) { this.note(sc[0] / 2, t, 5.5, 0.10, 'sine'); this.note(sc[s % 16 === 0 ? 3 : 2] / 2, t, 5.5, 0.06, 'sine'); }
       if (Math.random() < (s % 2 === 0 ? 0.62 : 0.26)) {
@@ -3180,7 +3207,7 @@ const Music = {
   },
   chime() { if (!this.ac || !G.set.music) return; const sc = SCALES[this.wid] || SCALES.town, t = this.ac.currentTime + 0.05; [2, 4, 6].forEach((i, k) => this.note(sc[Math.min(i, sc.length - 1)] * 2, t + k * 0.13, 1.8, 0.05, 'sine')); },
   setWorld(id) { this.wid = id; this.last = 3; },
-  toggle(on) { if (on) this.start(); if (this.out && this.ac) this.out.gain.linearRampToValueAtTime(on ? 0.5 : 0, this.ac.currentTime + 0.6); },
+  toggle(on) { if (this.aud) { if (on) this.aud.play().catch(() => { }); else this.aud.pause(); } if (on) this.start(); if (this.out && this.ac) this.out.gain.linearRampToValueAtTime(on ? 0.5 : 0, this.ac.currentTime + 0.6); },
 };
 
 /* ---- game.js ---- */
@@ -3193,16 +3220,31 @@ const G = {
   cam: { yaw: 0, pitch: 0.12, dist: 5.4, pos: new Float32Array(3), fwd: new Float32Array(3), skyR: new Float32Array(3), skyU: new Float32Array(3), vp: M4.create(), view: M4.create(), proj: M4.create(), tx: 0, ty: 0, tz: 0, lastDrag: -9, eye: [0, 2, 5], look: [0, 2, 0], r: [1, 0, 0], u: [0, 1, 0] },
   inp: { jx: 0, jy: 0, keys: {}, stick: null, looks: new Map() },
   mode: 'title', found: new Set(), met: new Set(),
-  set: { quality: 'auto', fps: false, stroke: 1, music: true, cycle: false, trail: true, sens: 1 },
+  set: { fpsCap: 0, res: 1, aa: false, preset: 3, fps: false, stroke: 1, music: true, cycle: false, trail: true, sens: 1 },
   scale: 1, hz: 60, dabs: [], dabT: 0, fire: [], view: null, seat: null, busy: false,
   run: false, riding: false, bike: { has: false, x: 0, y: 0, z: 0, rot: 0, steer: 0, spin: 0, crank: 0, lean: 0, v: 0, bones: new Float32Array(NB * 16), lamp: new Float32Array(3) },
   stars: 0, letters: null, scores: {}, flags: {}, rf: new Float32Array(32), rfT: 0, cap: null, rec: null,
 };
 
-/* ---------- native shell (the iOS app) ---------- */
+const SET0 = { fpsCap: 0, res: 1, aa: false, preset: 3, fps: false, stroke: 1, music: true, cycle: false, trail: true, sens: 1 };
+/* overall picture quality: detail distance, far distance, fog, sky pixels, outline distance, sky cadence, second stroke layer */
+const QP = [
+  { dd: 30, far: 150, fogK: 1.8, sky: 1.6e5, ol: 0, se: 3, s2: 0, glow: 60 },
+  { dd: 42, far: 210, fogK: 1.4, sky: 2.6e5, ol: 16, se: 2, s2: 0, glow: 90 },
+  { dd: 55, far: 290, fogK: 1.15, sky: 4.0e5, ol: 26, se: 2, s2: 1, glow: 130 },
+  { dd: 68, far: 1e9, fogK: 1, sky: 6.0e5, ol: 36, se: 2, s2: 1, glow: 130 },
+  { dd: 85, far: 1e9, fogK: 1, sky: 1.2e6, ol: 50, se: 1, s2: 1, glow: 160 },
+];
+/* ---------- native shells (iOS app, Android app) ---------- */
 const Native = {
-  on: !!window.__native, cbs: {},
-  post(cmd, data, cb) { try { if (cb) this.cbs[cmd] = cb; window.webkit.messageHandlers.native.postMessage(Object.assign({ cmd }, data || {})); return true; } catch (e) { return false; } },
+  on: !!window.__native || !!window.AndroidNative, kind: window.AndroidNative ? 'android' : (window.__native ? 'ios' : 'web'), cbs: {},
+  post(cmd, data, cb) {
+    try {
+      if (cb) this.cbs[cmd] = cb;
+      if (this.kind === 'android') { const A = window.AndroidNative; if (cmd === 'photo') A.savePhoto(data.data); else if (cmd === 'haptic') A.haptic(); else return false; return true; }
+      window.webkit.messageHandlers.native.postMessage(Object.assign({ cmd }, data || {})); return true;
+    } catch (e) { return false; }
+  },
   done(what, ok, msg) { const cb = this.cbs[what]; if (cb) { this.cbs[what] = null; cb(ok, msg); } },
 };
 window.Native = Native;
@@ -3549,7 +3591,7 @@ function sprites(dt) {
     }
     for (let i = 0; i < G.dabs.length; i++) { const q = G.dabs[i]; q.t += dt; const al = Math.max(0, 1 - q.t / 7) * 0.7; if (al <= 0) continue; const ca = Math.cos(q.a), sa = Math.sin(q.a); R.spr(0, q.x, q.y, q.z, ca * 0.1, 0, -sa * 0.1, sa * q.l, 0, ca * q.l, q.c[0], q.c[1], q.c[2], al); }
   }
-  if (night > 0.02) for (let i = 0; i < w.glows.length; i++) { const g = w.glows[i], d = Math.hypot(g.x - c.pos[0], g.z - c.pos[2]); if (d > 130 || !R.visible(g.x, g.y, g.z, g.s)) continue; const s = g.s * (1 + d * 0.012), k = night * (0.75 + 0.08 * Math.sin(G.time * 3 + g.x)); R.spr(1, g.x, g.y, g.z, r[0] * s, 0, r[2] * s, u[0] * s, u[1] * s, u[2] * s, g.col[0], g.col[1], g.col[2], k); }
+  if (night > 0.02) for (let i = 0; i < w.glows.length; i++) { const g = w.glows[i], d = Math.hypot(g.x - c.pos[0], g.z - c.pos[2]); if (d > QP[G.set.preset].glow || !R.visible(g.x, g.y, g.z, g.s)) continue; const s = g.s * (1 + d * 0.012), k = night * (0.75 + 0.08 * Math.sin(G.time * 3 + g.x)); R.spr(1, g.x, g.y, g.z, r[0] * s, 0, r[2] * s, u[0] * s, u[1] * s, u[2] * s, g.col[0], g.col[1], g.col[2], k); }
   if (night > 0.6 && w.extra.fireflies !== 0) {
     if (!G.fire.length) for (let i = 0; i < 16; i++) G.fire.push({ x: Math.random() * 30 - 15, y: 0.4 + Math.random() * 1.6, z: Math.random() * 30 - 15, ph: Math.random() * 9 });
     for (let i = 0; i < G.fire.length; i++) {
@@ -3580,7 +3622,7 @@ function sprites(dt) {
 
 /* ---------- frame ---------- */
 function env() {
-  if (Math.abs(G.tod - G.envTod) > 1e-4 || !G.env) { G.env = envAt(G.world.env, G.tod); G.envTod = G.tod; G.env.strokeAmt *= G.set.stroke; }
+  if (Math.abs(G.tod - G.envTod) > 1e-4 || !G.env) { G.env = envAt(G.world.env, G.tod); G.envTod = G.tod; G.env.strokeAmt *= G.set.stroke; G.env.fogD *= QP[G.set.preset].fogK; G.R.skyDirty = true; }
   return G.env;
 }
 function lampAt(w, a, out, amt) {
@@ -3588,26 +3630,17 @@ function lampAt(w, a, out, amt) {
   if (amt > 0.01) { const L = w.lamps; for (let i = 0; i < L.length; i++) { const l = L[i], dx = l.x - a.x, dz = l.z - a.z; if (dx > l.r || dx < -l.r || dz > l.r || dz < -l.r) continue; const dy = l.y - a.y - 1, d2 = dx * dx + dy * dy + dz * dz; if (d2 < l.r * l.r) { const at = 1 - Math.sqrt(d2) / l.r, k = at * at * l.k * amt; lr += l.col[0] * k; lg += l.col[1] * k; lb += l.col[2] * k; } } }
   out[0] = Math.min(lr, 1.2); out[1] = Math.min(lg, 1.2); out[2] = Math.min(lb, 1.2);
 }
-let lastT = 0, acc = 0, frames = 0, slow = 0, fast = 0;
+let lastT = 0, acc = 0, frames = 0;
 function frame(t) {
   requestAnimationFrame(frame);
   if (G.pause) { lastT = t / 1000; return; }
+  const now = t / 1000, cap = G.set.fpsCap;
+  if (cap && now - lastT < 1 / cap - 0.0016) return; // frame-rate ceiling chosen in settings
   G.fc = (G.fc || 0) + 1;
-  const now = t / 1000; let dt = now - lastT; lastT = now; if (dt > 0.1) dt = 0.1; if (dt <= 0) return;
+  let dt = now - lastT; lastT = now; if (dt > 0.1) dt = 0.1; if (dt <= 0) return;
   G.time += dt;
-  // adaptive resolution: hold the display's refresh rate, give back sharpness whenever there is room
   acc += dt; frames++;
-  if (frames > 10 && dt < 1 / (G.hz * 1.3)) G.hz = dt < 0.0075 ? 144 : dt < 0.0095 ? 120 : dt < 0.0125 ? 90 : G.hz;
-  if (acc >= 0.5) {
-    const fps = frames / acc; acc = 0; frames = 0; G.fps = fps;
-    if (G.set.fps) $('fps').textContent = Math.round(fps) + ' 帧 · ' + G.R.w + '×' + G.R.h + ' · ' + Math.round(G.R.drawn / 3000) + 'k 面';
-    if (G.set.quality !== 'fine' && G.mode !== 'title' && !G.busy && !window.__sync) {
-      const target = G.set.quality === 'fast' ? Math.min(G.hz, 120) : Math.min(G.hz, 60);
-      if (fps < target * 0.88) { slow++; fast = 0; if (slow >= 2) { if (G.scale > 0.72) { G.scale = Math.max(0.72, G.scale - 0.07); resize(); } slow = 0; } }
-      else if (fps > target * 0.965) { fast++; slow = 0; if (fast >= 5 && G.scale < 1) { G.scale = Math.min(1, G.scale + 0.05); fast = 0; resize(); } }
-      else { slow = 0; fast = 0; }
-    }
-  }
+  if (acc >= 0.5) { const fps = frames / acc; acc = 0; frames = 0; G.fps = fps; if (G.set.fps) $('fps').textContent = Math.round(fps) + ' 帧 · ' + G.R.w + '×' + G.R.h + ' · ' + Math.round(G.R.drawn / 3000) + 'k 面'; }
   if (!G.world) return;
   const w = G.world, p = G.player, R = G.R;
   if (G.set.cycle && G.mode === 'play') { G.todT += dt / 80; if (G.todT >= 3) G.todT -= 3; G.tod = G.todT <= 2 ? G.todT : 2 - (G.todT - 2) * 2; }
@@ -3618,8 +3651,9 @@ function frame(t) {
   const e = env(), c = G.cam, list = G.actors;
   Play.update(dt);
   R.begin(c, e, G.time);
-  R.drawWorld(w.solid);
-  if (w.detail) R.drawWorld(w.detail, w.detailDist * (G.set.quality === 'fast' ? 0.7 : 1));
+  const Q = QP[G.set.preset];
+  R.drawWorld(w.solid, Q.far);
+  if (w.detail) R.drawWorld(w.detail, Q.dd);
   if (w.portalMesh) R.drawPortals(w.portalMesh, w.portals);
   if (w.picMesh) R.drawPics(w.picMesh, w.pics);
   R.beginChars();
@@ -3627,13 +3661,13 @@ function frame(t) {
     const a = i < 0 ? p : list[i];
     const d = Math.hypot(a.x - c.pos[0], a.z - c.pos[2]); if (d > 110 || !R.visible(a.x, a.y + 0.9 * a.scale, a.z, 1.6 * a.scale)) continue;
     a.animate(G.time); lampAt(w, a, a.lamp, e.lampAmt);
-    R.drawChar(a.model, a.bones, a.lamp, d < 38 ? a.outline * a.scale : 0);
+    R.drawChar(a.model, a.bones, a.lamp, d < Q.ol ? a.outline * a.scale : 0);
   }
   const b = G.bike;
   if (b.has && R.visible(b.x, b.y + 0.6, b.z, 1.4)) {
     if (!G.riding) b.y += (groundY(w, b.x, b.z) - b.y) * Math.min(1, dt * 10);
     bikeBones(b.bones, b.x, b.y, b.z, b.rot, b.lean, b.steer, b.spin, b.crank); lampAt(w, b, b.lamp, e.lampAmt);
-    R.drawChar(model(G.flags.mail ? 'bikeGold' : 'bike'), b.bones, b.lamp, 0.01);
+    R.drawChar(model(G.flags.mail ? 'bikeGold' : 'bike'), b.bones, b.lamp, Q.ol ? 0.01 : 0);
   }
   if (w.water) {
     if (--G.rfT <= 0) {
@@ -3662,12 +3696,11 @@ function layout() {
 const PX = e => G.rot ? e.clientY : e.clientX, PY = e => G.rot ? window.innerWidth - e.clientX : e.clientY;
 function resize() {
   layout();
-  const dpr = Math.min(window.devicePixelRatio || 1, 3), q = G.set.quality; let eff;
-  // clarity first: native resolution wherever the pixel count allows, and never below a crisp floor
-  if (q === 'fine') eff = dpr; else if (q === 'fast') eff = Math.min(dpr, 1.5) * Math.max(0.8, G.scale);
-  else { const px = G.LW * G.LH * dpr * dpr, base = Math.min(1, Math.sqrt(4.6e6 / px)); eff = Math.max(Math.min(dpr, 1.7), dpr * base * G.scale); }
-  G.R.skyScale = q === 'fine' ? 0.85 : q === 'fast' ? 0.55 : 0.7; G.big = G.LH > 700; $('app').classList.toggle('big', G.big);
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), pts = G.LW * G.LH, budget = [1.3e6, 3.1e6, 1e9][G.set.res];
+  const eff = Math.max(Math.min(dpr, 1), Math.min(dpr, Math.sqrt(budget / pts)));
   G.R.resize(G.LW, G.LH, eff);
+  const Q = QP[G.set.preset]; G.R.skyScale = Math.min(0.85, Math.sqrt(Q.sky / (G.R.w * G.R.h))); G.R.skyEvery = Q.se; G.R.q2 = Q.s2; G.R.skyDirty = true; G.envTod = -1;
+  G.big = G.LH > 700; $('app').classList.toggle('big', G.big);
 }
 
 /* ---------- photo and film ---------- */
@@ -3707,13 +3740,16 @@ function toggleRecord() {
     return;
   }
   if (G.mode !== 'play') return;
-  if (Native.on) { Native.post('recStart', null, (ok, msg) => { if (ok) { G.rec = { native: true, t0: G.time }; UI.recording(true); } else UI.toast('没有开始录像', msg, 3200); }); return; }
+  if (Native.kind === 'ios') { Native.post('recStart', null, (ok, msg) => { if (ok) { G.rec = { native: true, t0: G.time }; UI.recording(true); } else UI.toast('没有开始录像', msg, 3200); }); return; }
   try {
     const st = $('c').captureStream(60), types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'], type = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
     if (!type) throw new Error('unsupported');
     const mr = new MediaRecorder(st, { mimeType: type, videoBitsPerSecond: 12e6 }), chunks = [];
-    mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-    mr.onstop = () => UI.film(URL.createObjectURL(new Blob(chunks, { type })));
+    const droid = Native.kind === 'android'; let chain = Promise.resolve();
+    if (droid) window.AndroidNative.recBegin(type.split(';')[0]);
+    const b64 = blob => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => ok(''); fr.readAsDataURL(blob); });
+    mr.ondataavailable = e => { if (!e.data || !e.data.size) return; if (droid) chain = chain.then(() => b64(e.data)).then(s => window.AndroidNative.recChunk(s)); else chunks.push(e.data); };
+    mr.onstop = () => { if (droid) { Native.cbs.recStop = (ok, msg) => UI.toast(ok ? '录像已存入相册' : '录像没有存下来', ok ? null : msg, 3200); chain.then(() => window.AndroidNative.recEnd()); } else UI.film(URL.createObjectURL(new Blob(chunks, { type }))); };
     mr.start(500); G.rec = { mr, t0: G.time }; UI.recording(true);
   } catch (e) { UI.toast('这里不能录像', '装上 App 后可以直接录到相册', 3600); }
 }
@@ -3760,9 +3796,10 @@ function bindInput() {
 
 function boot() {
   const cv = $('c');
-  try { G.R = new Renderer(cv); } catch (e) { $('err').textContent = '这个浏览器不支持 WebGL2，无法打开画布。' + (e && e.message ? '（' + String(e.message).slice(0, 120) + '）' : ''); $('err').hidden = false; return; }
+  Object.assign(G.set, SET0, store.get('set2', {}));
+  try { G.R = new Renderer(cv, G.set.aa); } catch (e) { $('err').textContent = '这个浏览器不支持 WebGL2，无法打开画布。' + (e && e.message ? '（' + String(e.message).slice(0, 120) + '）' : ''); $('err').hidden = false; return; }
   const R = G.R; R.makeStroke('oil', 'oil', 7); R.makeStroke('dots', 'dots', 11); R.makeStroke('paper', 'paper', 5); R.makeStroke('dab', 'dab', 3);
-  Object.assign(G.set, store.get('set', {})); G.found = new Set(store.get('found', [])); G.met = new Set(store.get('met', []));
+  G.found = new Set(store.get('found', [])); G.met = new Set(store.get('met', []));
   G.stars = store.get('stars', 0); G.letters = store.get('letters', null); G.scores = store.get('scores', {}); G.flags = store.get('flags', {});
   G.scale = 1; resize();
   G.player = new Actor(model('player'), { x: 0, z: 0, rot: Math.PI, outline: 0.012, extra: { def: {} } });

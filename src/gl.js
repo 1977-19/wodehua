@@ -25,12 +25,13 @@ in vec3 vPos; in vec3 vNrm; in vec4 vCol; in vec4 vLamp; in vec2 vFog;
 uniform sampler2D uStroke;
 uniform vec3 uSunDir, uLight, uShade, uFogCol, uTint, uGlowCol, uNA, uNB; uniform float uNMix;
 uniform vec4 uP; // strokeScale, strokeAmt, lampAmt, glow
-uniform float uShadowAmt; uniform vec2 uRes;
+uniform float uShadowAmt; uniform vec2 uRes; uniform float uQ;
 out vec4 o;
 void main(){
   vec3 n = normalize(vNrm); vec3 an = abs(n);
   vec2 uv = an.y > 0.55 ? vPos.xz : (an.x > an.z ? vPos.zy : vPos.xy);
-  vec4 s = mix(texture(uStroke, uv*uP.x), texture(uStroke, uv*uP.x*0.21 + 0.31), smoothstep(14.0, 55.0, vFog.y));
+  vec4 s = texture(uStroke, uv*uP.x);
+  if (uQ > 0.5) s = mix(s, texture(uStroke, uv*uP.x*0.21 + 0.31), smoothstep(14.0, 55.0, vFog.y));
   float sh = 1.0 - vLamp.a*uShadowAmt;
   float ndl = dot(n, uSunDir)*0.5 + 0.5;
   float l = smoothstep(0.36, 0.64, ndl + (s.r-0.5)*0.34)*sh;
@@ -358,9 +359,9 @@ void main(){
 }`;
 
 class Renderer {
-  constructor(canvas) {
+  constructor(canvas, aa) {
     this.canvas = canvas;
-    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: true, stencil: false, powerPreference: 'high-performance', desynchronized: true, preserveDrawingBuffer: false });
+    const gl = canvas.getContext('webgl2', { antialias: !!aa, alpha: false, depth: true, stencil: false, powerPreference: 'high-performance', desynchronized: true, preserveDrawingBuffer: false });
     if (!gl) throw new Error('WebGL2 unavailable');
     this.gl = gl;
     this.prog = {};
@@ -493,7 +494,10 @@ class Renderer {
   begin(cam, env, time) {
     const gl = this.gl;
     this.cam = cam; this.env = env; this.time = time;
-    this.paintSky(cam, env, time);
+    { // repaint the sky only when the view turned, the light changed, or its turn came up
+      const f = cam.fwd, l = this.lastF || (this.lastF = new Float32Array(3)); this.skyN = (this.skyN || 0) + 1;
+      if (this.skyDirty || this.skyN >= (this.skyEvery || 1) || Math.abs(f[0] - l[0]) + Math.abs(f[1] - l[1]) + Math.abs(f[2] - l[2]) > 0.0012) { this.paintSky(cam, env, time); l[0] = f[0]; l[1] = f[1]; l[2] = f[2]; this.skyN = 0; this.skyDirty = false; }
+    }
     gl.viewport(0, 0, this.w, this.h);
     gl.depthMask(true); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
     gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -508,7 +512,7 @@ class Renderer {
     gl.uniform3fv(u.uSunDir, e.sunDir); gl.uniform3fv(u.uLight, e.light); gl.uniform3fv(u.uShade, e.shade);
     gl.uniform3fv(u.uFogCol, e.fog); gl.uniform3fv(u.uTint, e.tint);
     gl.uniform4f(u.uP, e.strokeScale, e.strokeAmt, e.lampAmt, e.glow); gl.uniform1f(u.uShadowAmt, e.shadowAmt);
-    gl.uniform1i(u.uStroke, 0); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h); gl.uniform3fv(u.uGlowCol, e.glowCol); gl.uniform3fv(u.uNA, e.nightA); gl.uniform3fv(u.uNB, e.nightB); gl.uniform1f(u.uNMix, e.nightMix);
+    gl.uniform1i(u.uStroke, 0); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h); gl.uniform1f(u.uQ, this.q2 ? 1 : 0); gl.uniform3fv(u.uGlowCol, e.glowCol); gl.uniform3fv(u.uNA, e.nightA); gl.uniform3fv(u.uNB, e.nightB); gl.uniform1f(u.uNMix, e.nightMix);
     gl.bindVertexArray(m.vao);
     if (m.chunks) {
       const md = maxDist || 1e9, cx = c.pos[0], cz = c.pos[2], C = this.mdC, O = this.mdO; let n = 0;

@@ -119,6 +119,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
 .go.here { border-color: var(--vermilion); box-shadow: inset 0 0 0 1px var(--vermilion); }
 .go.pr { background: var(--gold); }
 #sDismiss { margin-top: 16px; width: 100%; }
+.grow { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 14px; margin-top: 12px; }
+.grow label { font-size: 15px; font-weight: 600; letter-spacing: .1em; }
+.inl { display: flex; align-items: center; gap: 14px; } .inl .tog { min-width: 110px; } .inl span { font-size: 12px; opacity: .6; }
+.togs.two { grid-template-columns: 1fr 1.6fr; } .tog.lab { display: grid; place-items: center; cursor: pointer; }
+.sp { flex: 1; }
+#app.big .grow { grid-template-columns: 130px 1fr; margin-top: 16px; } #app.big .grow label { font-size: 18px; }
 .note { font-size: 12px !important; opacity: .65; line-height: 1.7 !important; text-align: left !important; margin-top: 8px !important; }
 .art { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid rgba(23, 33, 79, .14); }
 .art.pr { background: rgba(230, 194, 86, .25); }
@@ -221,16 +227,21 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
 </div></div>
 
 <div class="scrim" id="set"><div class="sheet">
-  <div class="head"><h2>设置</h2><button class="x" data-close>关闭</button></div>
+  <div class="head"><h2>设置</h2><span class="sp"></span><button class="x" id="sReset">恢复默认</button><button class="x" data-close>关闭</button></div>
+  <div class="grow"><label>帧率</label><div class="seg" id="sFpsCap"><button>30</button><button>60</button><button>90</button><button>120</button><button>极致</button></div></div>
+  <div class="grow"><label>分辨率</label><div class="seg" id="sRes"><button>节能</button><button>高</button><button>超高</button></div></div>
+  <div class="grow"><label>抗锯齿</label><div class="inl"><button class="tog" id="sAA">开启</button><span>切换后重新载入</span></div></div>
+  <div class="grow"><label>画面总质量</label><div class="seg" id="sPreset"><button>节能</button><button>流畅</button><button>标准</button><button>高清</button><button>极致</button></div></div>
+  <p class="note">"极致"帧率不设上限，跟随屏幕刷新率（60、90 或 120）。帧数不够时，先把分辨率降一档，再降画面总质量。系统开着"低电量模式"时，手机会把画面限制在 30 帧。</p>
   <h3>去往另一幅画</h3><div id="sGo"></div>
   <div class="cols">
     <div><h3>天色</h3><div class="seg" id="sTod"><button>白天</button><button>黄昏</button><button>夜晚</button><button>流转</button></div></div>
     <div><h3>视角灵敏度</h3><div class="seg" id="sSens"><button>慢</button><button>适中</button><button>快</button></div></div>
-    <div><h3>画质与帧率</h3><div class="seg" id="sQuality"><button>自动</button><button>流畅</button><button>最清晰</button></div></div>
     <div><h3>笔触</h3><div class="seg" id="sStroke"><button>淡</button><button>适中</button><button>厚涂</button></div></div>
+    <div><h3>音乐</h3><div class="togs two"><button class="tog" id="sMusic">开启</button><label class="tog lab" for="fMusic">换成我的音乐</label></div></div>
   </div>
-  <p class="note">"自动"会在满帧的前提下尽量提高清晰度；"最清晰"按屏幕原生分辨率渲染。</p>
-  <h3>其他</h3><div class="togs"><button class="tog" id="sMusic">音乐</button><button class="tog" id="sTrail">颜料脚印</button><button class="tog" id="sFps">显示帧率</button></div>
+  <input type="file" id="fMusic" accept="audio/*,video/*" hidden>
+  <h3>其他</h3><div class="togs"><button class="tog" id="sTrail">颜料脚印</button><button class="tog" id="sFps">显示帧率</button><button class="tog" id="sOwn" hidden>换回原来的音乐</button></div>
   <button class="btn" id="sDismiss" hidden></button>
 </div></div>
 

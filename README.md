@@ -2,6 +2,10 @@
 
 走进梵高的小镇，穿过金色的画框，去往八个名画世界：梵高小镇、露天美术馆（蒙娜丽莎、大卫等）、莫奈睡莲池、北斋神奈川、蒙克峡湾、修拉大碗岛、千里江山、雾海之巅。
 
+## 安装到安卓
+
+到 **Releases → latest** 下载 `HuaZhongManBu.apk`，直接安装（需要安卓 10 以上，并允许安装未知来源应用）。
+
 ## 安装到 iPhone / iPad
 
 到本仓库的 **Releases → latest** 下载 `HuaZhongManBu.ipa`（未签名），用 AltStore、Sideloadly 或 TrollStore 安装。

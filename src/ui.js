@@ -42,21 +42,28 @@ const UI = {
     document.querySelectorAll('[data-close]').forEach(b => tap(b, () => UI.closeAll()));
     document.querySelectorAll('.scrim').forEach(s => tap(s, e => { if (e.target === s) UI.closeAll(); }));
     document.querySelectorAll('.sheet').forEach(dragScroll);
-    const seg = (id, key, vals, after) => $(id).querySelectorAll('button').forEach((b, i) => tap(b, () => { G.set[key] = vals[i]; store.set('set', G.set); UI.syncSet(); if (after) after(); }));
-    seg('sQuality', 'quality', ['auto', 'fast', 'fine'], () => { G.scale = 1; resize(); });
+    const seg = (id, key, vals, after) => $(id).querySelectorAll('button').forEach((b, i) => tap(b, () => { G.set[key] = vals[i]; store.set('set2', G.set); UI.syncSet(); if (after) after(); }));
+    seg('sFpsCap', 'fpsCap', [30, 60, 90, 120, 0]);
+    seg('sRes', 'res', [0, 1, 2], () => resize());
+    seg('sPreset', 'preset', [0, 1, 2, 3, 4], () => resize());
+    tap($('sAA'), () => { G.set.aa = !G.set.aa; store.set('set2', G.set); UI.syncSet(); UI.toast('抗锯齿' + (G.set.aa ? '已开启' : '已关闭'), '重新载入后生效', 1600); setTimeout(() => location.reload(), 900); });
+    tap($('sReset'), () => { const keep = G.set.aa; Object.assign(G.set, SET0); store.set('set2', G.set); UI.syncSet(); resize(); $('fps').hidden = true; Music.toggle(true); if (keep) setTimeout(() => location.reload(), 600); });
+    $('fMusic').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) { Music.setCustom(f, f.name, true); UI.syncSet(); UI.toast('换上了你的音乐', f.name.slice(0, 28), 2600); } e.target.value = ''; });
+    tap($('sOwn'), () => { Music.clearCustom(); UI.syncSet(); });
     seg('sStroke', 'stroke', [0.55, 1, 1.35], () => { G.envTod = -1; });
     seg('sSens', 'sens', [0.65, 1, 1.5]);
     $('sTod').querySelectorAll('button').forEach((b, i) => tap(b, () => { if (i === 3) G.set.cycle = !G.set.cycle; else { G.set.cycle = false; G.todT = i; } UI.syncSet(); }));
-    const tog = (id, key, after) => tap($(id), () => { G.set[key] = !G.set[key]; store.set('set', G.set); UI.syncSet(); if (after) after(); });
+    const tog = (id, key, after) => tap($(id), () => { G.set[key] = !G.set[key]; store.set('set2', G.set); UI.syncSet(); if (after) after(); });
     tog('sFps', 'fps', () => { $('fps').hidden = !G.set.fps; }); tog('sMusic', 'music', () => Music.toggle(G.set.music)); tog('sTrail', 'trail');
     tap($('sDismiss'), () => { UI.closeAll(); dismiss(); });
     const go = $('sGo');
     Object.keys(WORLD_INFO).forEach(id => { if (!WORLDS[id]) return; const b = document.createElement('button'); b.className = 'go'; b.innerHTML = '<b>' + WORLD_INFO[id].n + '</b><span>' + WORLD_INFO[id].sub + '</span>'; b.dataset.w = id; tap(b, () => { UI.closeAll(); if (G.wid === id) return; G.mode = 'travel'; UI.hud(false); travel(id, null); }); go.appendChild(b); });
-    $('fps').hidden = !G.set.fps; UI.syncSet(); UI.modes(); UI.chips();
+    $('fps').hidden = !G.set.fps; Music.restore(); UI.syncSet(); UI.modes(); UI.chips();
   },
   syncSet() {
     const s = G.set, on = (id, i) => $(id).querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
-    on('sQuality', ['auto', 'fast', 'fine'].indexOf(s.quality)); on('sStroke', [0.55, 1, 1.35].indexOf(s.stroke)); on('sSens', [0.65, 1, 1.5].indexOf(s.sens)); on('sTod', s.cycle ? 3 : Math.round(G.todT) % 3);
+    on('sFpsCap', [30, 60, 90, 120, 0].indexOf(s.fpsCap)); on('sRes', s.res); on('sPreset', s.preset); $('sAA').classList.toggle('on', s.aa); $('sOwn').hidden = !Music.aud;
+    on('sStroke', [0.55, 1, 1.35].indexOf(s.stroke)); on('sSens', [0.65, 1, 1.5].indexOf(s.sens)); on('sTod', s.cycle ? 3 : Math.round(G.todT) % 3);
     $('sFps').classList.toggle('on', s.fps); $('sMusic').classList.toggle('on', s.music); $('sTrail').classList.toggle('on', s.trail);
     $('sDismiss').hidden = !G.companion; if (G.companion) $('sDismiss').textContent = '请' + PEOPLE[G.companion.who].n + '留步';
     $('sGo').querySelectorAll('button').forEach(b => b.classList.toggle('here', b.dataset.w === G.wid));
@@ -151,8 +158,13 @@ const SCALES = {
   museum: [196, 220, 246.94, 293.66, 329.63, 392, 440, 493.88], fog: [174.61, 196, 233.08, 261.63, 293.66, 349.23, 392],
 };
 const Music = {
-  ac: null, out: null, wid: 'town', step: 0, timer: null, last: 3,
+  ac: null, out: null, wid: 'town', step: 0, timer: null, last: 3, aud: null,
+  db(fn) { try { const rq = indexedDB.open('hzmb', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv'); rq.onsuccess = () => { try { fn(rq.result.transaction('kv', 'readwrite').objectStore('kv')); } catch (e) { } }; } catch (e) { } },
+  setCustom(blob, name, save) { if (this.aud) this.aud.pause(); const a = this.aud = new Audio(URL.createObjectURL(blob)); a.loop = true; a.volume = 0.85; if (save) this.db(st => st.put({ blob, name }, 'bgm')); if (G.set.music && G.mode !== 'title') a.play().catch(() => { }); },
+  clearCustom() { if (this.aud) { this.aud.pause(); this.aud = null; } this.db(st => st.delete('bgm')); },
+  restore() { this.db(st => { const rq = st.get('bgm'); rq.onsuccess = () => { const v = rq.result; if (v && v.blob) Music.setCustom(v.blob, v.name, false); }; }); },
   start() {
+    if (this.aud && G.set.music && this.aud.paused) this.aud.play().catch(() => { });
     if (this.ac || !G.set.music) { if (this.ac && this.ac.state === 'suspended') this.ac.resume().catch(() => { }); return; }
     try {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -172,7 +184,7 @@ const Music = {
   loop() {
     if (!this.ac) return;
     const ac = this.ac, sc = SCALES[this.wid] || SCALES.town, t = ac.currentTime + 0.06, pl = this.wid === 'jiangshan' || this.wid === 'hokusai';
-    if (G.set.music && ac.state === 'running') {
+    if (G.set.music && ac.state === 'running' && !(this.aud && !this.aud.paused)) {
       const s = this.step++;
       if (s % 8 === 0) { this.note(sc[0] / 2, t, 5.5, 0.10, 'sine'); this.note(sc[s % 16 === 0 ? 3 : 2] / 2, t, 5.5, 0.06, 'sine'); }
       if (Math.random() < (s % 2 === 0 ? 0.62 : 0.26)) {
@@ -184,5 +196,5 @@ const Music = {
   },
   chime() { if (!this.ac || !G.set.music) return; const sc = SCALES[this.wid] || SCALES.town, t = this.ac.currentTime + 0.05; [2, 4, 6].forEach((i, k) => this.note(sc[Math.min(i, sc.length - 1)] * 2, t + k * 0.13, 1.8, 0.05, 'sine')); },
   setWorld(id) { this.wid = id; this.last = 3; },
-  toggle(on) { if (on) this.start(); if (this.out && this.ac) this.out.gain.linearRampToValueAtTime(on ? 0.5 : 0, this.ac.currentTime + 0.6); },
+  toggle(on) { if (this.aud) { if (on) this.aud.play().catch(() => { }); else this.aud.pause(); } if (on) this.start(); if (this.out && this.ac) this.out.gain.linearRampToValueAtTime(on ? 0.5 : 0, this.ac.currentTime + 0.6); },
 };
