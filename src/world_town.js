@@ -84,9 +84,9 @@ WORLDS.town = function (R) {
   const tables = [[-7.4, -16.6], [-5.5, -17.2], [-7.4, -19.4], [-5.2, -20.2], [-7.4, -22.4], [-7.4, -25.2], [-5.4, -24.6], [-7.4, -28.2], [-5.3, -27.6]];
   tables.forEach((t, i) => {
     cafeTable(ctx, t[0], t[1], 0.22, { cup: i % 3 === 0 ? 0 : 1 });
-    chair(ctx, t[0], t[1] + 0.72, 0.22, Math.PI, { tag: 'cafe' }); chair(ctx, t[0] + (i % 2 ? 0.72 : -0.0), t[1] - 0.72, 0.22, 0, { tag: 'cafe', noSeat: i % 2 === 0 });
+    chair(ctx, t[0], t[1] + 0.72, 0.22, Math.PI, { tag: 'cafe', free: 1 }); chair(ctx, t[0] + (i % 2 ? 0.72 : -0.0), t[1] - 0.72, 0.22, i % 2 ? -0.8 : 0, { tag: 'cafe', noSeat: i % 2 === 0, free: 1 });
   });
-  ctx.npcs.push({ cast: 'patronA', who: null, x: -7.4, z: -18.68, rot: 0, pose: 'sit', sit: 0.22 }, { cast: 'patronB', who: null, x: -7.4, z: -24.48, rot: 0, pose: 'sit', sit: 0.22 }, { cast: 'patronC', who: null, x: -5.4, z: -23.88, rot: Math.PI, pose: 'sit', sit: 0.22, dz: 0 },
+  ctx.npcs.push({ cast: 'patronA', who: null, x: -7.4, z: -18.68, rot: Math.PI, pose: 'sit', sit: 0.22 }, { cast: 'patronB', who: null, x: -7.4, z: -24.48, rot: Math.PI, pose: 'sit', sit: 0.22 }, { cast: 'patronC', who: null, x: -5.4, z: -23.88, rot: Math.PI, pose: 'sit', sit: 0.22, dz: 0 },
     { cast: 'waiter', who: 'waiter', x: -6.3, z: -21.6, rot: 0.6, pose: 'serve', mode: 'wander', rad: 1.2, y: 0.22 },
     { cast: 'ginoux', who: 'ginoux', x: -6.2, z: -13.3, rot: 0.5, pose: 'hold' });
   ctx.spots.push({ art: 'cafe', x: -1, z: -17, r: 9, view: { p: [3.6, 1.5, -8.4], t: [-4.2, 3.9, -27], tod: 2 } });
@@ -123,7 +123,8 @@ WORLDS.town = function (R) {
   ctx.spots.push({ art: 'yellow', x: 22, z: 2, r: 8, view: { p: [8.5, 1.7, -4.5], t: [23, 4.4, 9], tod: 0 } });
   easel(ctx, 30.6, 3.0, 0.5, ART.yellow.c);
   // van gogh's chair, with pipe and tobacco
-  chair(ctx, 16.9, 2.0, 0, -1.9, { col: '#e3b93c', seat: '#d9c06a', noSeat: true }); m.c('#5a3a22'); m.cyl(16.9, 0.5, 2.0, 0.03, 0.035, 0.04, 6, 1); m.c('#e9e2cf'); m.box(17.02, 0.49, 2.08, 0.1, 0.02, 0.08, 63);
+  chair(ctx, 16.9, 2.0, 0, -1.9, { col: '#e3b93c', seat: '#d9c06a', noSeat: true });
+  armchair(ctx, 16.7, 4.3, 0, -1.4, { candle: 1, tag: 'chair' }); ctx.spots.push({ art: 'gauguin', x: 16.2, z: 4.6, r: 2.2 }); m.c('#5a3a22'); m.cyl(16.9, 0.5, 2.0, 0.03, 0.035, 0.04, 6, 1); m.c('#e9e2cf'); m.box(17.02, 0.49, 2.08, 0.1, 0.02, 0.08, 63);
   ctx.spots.push({ art: 'chair', x: 16.9, z: 2.0, r: 2.6 });
   ctx.npcs.push({ cast: 'vincent', who: 'vincent', x: 30.2, z: 4.3, rot: 2.9, pose: 'paint' });
   // plaza south, south street, quay
@@ -147,7 +148,7 @@ WORLDS.town = function (R) {
   [[-11.5, -8.5], [11.5, 8.5], [-11.5, 8.5], [12.5, -8], [4.4, -34], [-3.1, -45.5], [4.4, -57], [-30, 3.2], [-42, -3.2], [31, 3.2], [43, -3.2], [3.5, 24.5], [-8, -66], [9, -66]].forEach(p => lampPost(ctx, p[0], p[1]));
   for (let x = -40; x <= 60; x += 12.5) { lampPost(ctx, x, 40.2, { r: 12 }); ctx.lamps[ctx.lamps.length - 1].refl = [x, 43, 26, 0.5]; }
   // trees and benches in town
-  [[-13.5, 10.2], [13.6, 10.4], [6.6, -11.6], [-14, -10.6]].forEach(p => tree(ctx, p[0], p[1], Object.assign({}, TREES.plane, { h: 8 + rng() * 1.5 })));
+  [[-13.5, 10.2], [13.6, 10.4], [7.4, -12.6], [-14, -10.6]].forEach(p => tree(ctx, p[0], p[1], Object.assign({}, TREES.plane, { h: 8 + rng() * 1.5 })));
   for (let x = -34; x <= 54; x += 14.6) if (Math.abs(x - 1) > 6) tree(ctx, x + 6, 37.3, Object.assign({}, TREES.plane, { h: 7 + rng() * 1.5 }));
   bench(ctx, -10.6, 11.6, Math.PI, { tag: 'bench' }); bench(ctx, 10.5, 11.6, Math.PI, { tag: 'bench' }); bench(ctx, -18, 37.0, 0, { tag: 'quay' }); bench(ctx, 18, 37.0, 0, { tag: 'quay' }); bench(ctx, 44, 37.0, 0, { tag: 'quay' });
   ctx.spots.push({ art: 'rhone', x: 12, z: 39, r: 10, view: { p: [-13, 1.6, 39.2], t: [22, 6, 82], tod: 2 } });
@@ -163,6 +164,19 @@ WORLDS.town = function (R) {
     const lx = x + 6; ctx.lamps.push({ x: lx, y: 3, z: 131, r: 10, col: [1, 0.78, 0.34], k: 1, refl: [lx, 129.5, 62, 1.3] }); ctx.glows.push({ x: lx, y: 3, z: 131, s: 3.2, col: [1, 0.8, 0.4] });
   }
   ctx.npcs.push({ cast: 'loverM', who: 'lovers', x: 20, z: 38.6, rot: W, pose: 'idle', mode: 'path', path: [[-30, 38.7], [52, 38.7]], speed: 0.75 }, { cast: 'loverF', who: 'lovers', x: 20, z: 39.3, rot: W, pose: 'hold', mode: 'follow', of: -1, side: 0.62 });
+
+  /* chairs to rest on, and the clutter of a living town */
+  [[-3.6, 2.2, 2.2], [3.5, 2.4, -2.2], [-3.4, -3.4, 0.9], [3.6, -3.2, -0.9], [20.6, 3.6, Math.PI], [26.8, 3.6, Math.PI], [-14.2, 37.4, 0], [-12.6, 37.6, 0.3], [30.5, 37.4, 0], [32, 37.5, -0.3], [56, 37.6, 0],
+    [-16.2, -3.9, 1.6], [17.6, -5.4, -1.6], [-2.6, 20, 1.57], [2.8, 30, -1.57]].forEach(c => chair(ctx, c[0], c[1], 0, c[2], { tag: 'chair' }));
+  [[61, 3.4, Math.PI], [58.6, -7.4, 0], [66, -31, 2.4], [70.5, -40, -0.6], [-66.5, 4.6, 1.2], [-68, -8, 1.9], [-50.2, -68.6, 2.1], [72, -78.5, 2.9], [90, -34, -1.2], [3.5, -66.5, 3.0], [-74, -38, 2.3], [84, 9.5, 2.6]].forEach(c => chair(ctx, c[0], c[1], H(c[0], c[1]), c[2], { tag: 'chair', col: '#c9862a' }));
+  armchair(ctx, 24, 3.5, 0, Math.PI, { col: '#7a4a2e', seat: '#c2452f', tag: 'chair' }); armchair(ctx, -19.5, 3.8, 0, 0.9, { col: '#5a4030', seat: '#3f6fb0', tag: 'chair' });
+  barrel(ctx, 17.3, -4.4); barrel(ctx, 18.1, -4.2, 0.85); barrel(ctx, -17.3, 13.6, 0.9); barrel(ctx, 5.5, 22, 1); barrel(ctx, 49, 36.6, 1); barrel(ctx, 50, 36.9, 0.8);
+  crate(ctx, 5.6, 23.2, 0.7, 0.3); crate(ctx, 46.5, 36.8, 0.8, 0.2); crate(ctx, 47.2, 37.1, 0.55, 0.9); crate(ctx, -30.5, 4.2, 0.7, 0.5); crate(ctx, 16.6, -5.6, 0.6, 0.4);
+  stall(ctx, -8.4, 10.2, Math.PI, '#c2452f'); stall(ctx, 7.6, 10.4, Math.PI, '#3f6fb0'); stall(ctx, -30, -3.0, 0, '#e2b23c');
+  handcart(ctx, -40.5, 2.2, 1.2); handcart(ctx, 44, 2.6, -0.6);
+  [[19.2, 4.5, 'sun'], [28.2, 4.5, 'sun'], [-3.9, -14.2, 'bush'], [-3.9, -30.8, 'bush'], [-17.3, -4.2, 'iris'], [-17.3, 4.4, '#f3a9b6'], [5.3, -20, '#d93a2b'], [5.3, -30, 'bush'], [5.3, -42, '#f6e27a'], [-4.2, -38, 'iris'], [-4.2, -50, '#d93a2b'], [-4.4, 14, 'bush'], [4.4, 14, 'bush'], [17.3, 5, '#f08a9a'], [-10, -60.6, 'bush'], [11, -60.6, 'bush'], [33, 4.2, 'sun'], [-29.5, -3.9, '#d93a2b'], [41, -4, 'iris']].forEach(q => pot(ctx, q[0], q[1], q[2]));
+  // washing hung across the lane behind the east row
+  m.c('#e9e4d6'); m.tube([[13.4, 5.2, -22], [15.5, 4.7, -22], [17.6, 5.2, -22]], 0.012, 3); m.ds = true; [['#f1ead6', 14.1], ['#c2452f', 15.0], ['#3f6fb0', 15.9], ['#f6e27a', 16.8]].forEach(q => { m.c(q[0]); m.sway(3.6, 1.4, 0.5); m.quad([q[1] - 0.3, 3.9, -22], [q[1] + 0.3, 3.9, -22], [q[1] + 0.3, 4.85, -22], [q[1] - 0.3, 4.85, -22]); m.sway(0); }); m.ds = false;
 
   /* ---------- the church at Auvers ---------- */
   {
@@ -335,7 +349,9 @@ WORLDS.town = function (R) {
   frameGate(ctx, -44, 38.5, W, 'munch');
   frameGate(ctx, 75.2, 2.5, -W + 0.5, 'monet');
   frameGate(ctx, 98.5, -15, -W, 'jiangshan');
+  frameGate(ctx, 14.2, -11.2, -0.72, 'museum');
+  frameGate(ctx, -62.5, -80, 1.2, 'fog');
 
-  return finishWorld(R, ctx, { id: 'town', env: TOWN_ENV, defTod: 2, shadowSun: nrm3(TOWN_ENV[0].sunDir), bound: { r: 124 }, spawn: { x: 0.6, z: 8.5, rot: Math.PI, cam: 0 }, cell: 28 });
+  return finishWorld(R, ctx, { id: 'town', env: TOWN_ENV, defTod: 2, shadowSun: nrm3(TOWN_ENV[0].sunDir), bound: { r: 176 }, spawn: { x: 0.6, z: 8.5, rot: Math.PI, cam: 0 }, cell: 28 });
 };
 CAST.oiran = { skin: '#f6e2d0', hair: '#1c1a20', hairStyle: 'bun', top: '#c9452f', style: 'robe', sleeve: '#c9452f', legs: '#e9e2cc', shoes: '#22202a', collar: '#e9d98a', scarf: '#3f8a5a', face: { eye: '#1c1a20', blush: 0.5, mouth: '#c9302f' }, props: [{ type: 'fan', col: '#e9d98a' }] };

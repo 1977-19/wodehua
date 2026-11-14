@@ -58,11 +58,51 @@ const PEOPLE = {
   pearl: { n: '戴珍珠耳环的少女', sub: '维米尔 约1665', d: '没有人知道她是谁。这类画在荷兰叫"tronie"，画的是一种神态，而不是某个具体的人。', invite: 1 },
   milkmaid: { n: '倒牛奶的女仆', sub: '维米尔 约1658', d: '她低着头，专心看着那一线牛奶。', invite: 1 },
 };
+Object.assign(ART, {
+  gauguin: { t: '高更的椅子', a: VG, y: '1888', d: '和自己那把草编椅成对的一幅。扶手椅上放着点燃的蜡烛和两本小说，绿墙红地，是他眼里那位朋友的样子。', c: ['#3f7a5a', '#b5422f', '#e6c256', '#5a3a26'] },
+  mona: { t: '蒙娜丽莎', a: '列奥纳多·达·芬奇', y: '约1503–1519', d: '他用"晕涂法"把嘴角和眼角的轮廓融进阴影里，所以她的微笑会随你看的位置而变。画在一块杨木板上，只有 77×53 厘米。', c: ['#3a3a26', '#a8823a', '#f0d6a8', '#5f7a6a'] },
+  supper: { t: '最后的晚餐', a: '列奥纳多·达·芬奇', y: '约1495–1498', d: '画在米兰一座修道院食堂的墙上。耶稣刚说出"你们中有一人要出卖我"，十二个门徒三人一组，各自惊动。', c: ['#8a7a66', '#3f5f9a', '#b5422f', '#e9dcc0'] },
+  pearl: { t: '戴珍珠耳环的少女', a: '约翰内斯·维米尔', y: '约1665', d: '她从暗处转过头来，嘴唇微张。蓝色头巾用的是比黄金还贵的群青，耳环只是寥寥两笔高光。', c: ['#1c1c1a', '#4a7ac0', '#e2bb4e', '#f6dcc4'] },
+  milk: { t: '倒牛奶的女仆', a: '约翰内斯·维米尔', y: '约1658', d: '晨光从左边的窗子照进来，牛奶细细地流进陶盆。整个房间安静得只剩下这一线声音。', c: ['#c9c2a8', '#e3c04a', '#3f62a8', '#b5422f'] },
+  venusb: { t: '维纳斯的诞生', a: '桑德罗·波提切利', y: '约1485', d: '女神站在贝壳上，被风神吹向岸边，春之女神正展开披风迎接她。线条轻得像没有重量。', c: ['#8fc0b8', '#f0d6b8', '#e2a85a', '#5f8a6a'] },
+  nightwatch: { t: '夜巡', a: '伦勃朗', y: '1642', d: '其实画的是白天。几百年里光油变暗，人们才误以为是夜景。民兵队正要出发，光只落在几个人身上。', c: ['#1c1814', '#b5892e', '#e9d9a8', '#8a2f26'] },
+  meninas: { t: '宫娥', a: '迭戈·委拉斯开兹', y: '1656', d: '画家把自己也画了进去，正从画布后面看着你。远处的镜子里映出国王和王后，他们站的正是你现在的位置。', c: ['#3a3026', '#c9b89a', '#b5422f', '#6a6a5a'] },
+  liberty: { t: '自由引导人民', a: '欧仁·德拉克洛瓦', y: '1830', d: '纪念 1830 年巴黎的七月革命。高举三色旗的女子是"自由"的化身，她身边有工人、学生，也有孩子。', c: ['#5a4a3a', '#2f4f9a', '#f1ead6', '#b5422f'] },
+  kiss: { t: '吻', a: '古斯塔夫·克里姆特', y: '1907–1908', d: '克里姆特"金色时期"的顶点，画面上贴着真正的金箔。男人的袍子是方块，女人的是圆与花。', c: ['#e2b23c', '#f3d77a', '#5f8a4a', '#b5422f'] },
+  adam: { t: '创造亚当', a: '米开朗基罗', y: '约1512', d: '西斯廷礼拜堂天顶的中心。两根手指将触未触，生命就在这道缝隙里。他仰着头在脚手架上画了四年。', c: ['#c9d2d8', '#e2b89a', '#b5607a', '#6a8a6a'] },
+  sunrise: { t: '印象·日出', a: '克劳德·莫奈', y: '1872', d: '勒阿弗尔港的清晨，橙色的太阳只是几笔。一位评论家拿这个标题嘲笑他们，"印象派"的名字就这样来了。', c: ['#6a8aa8', '#e8762a', '#8fa6b8', '#3a4a6a'] },
+  wanderer: { t: '雾海上的旅人', a: '卡斯帕·大卫·弗里德里希', y: '约1818', d: '他背对着我们站在岩石上，脚下是翻涌的云海。我们看不到他的脸，于是看到的是他所看到的。', c: ['#c9d2dc', '#22382e', '#8a9ab0', '#f1ead6'] },
+  arnolfini: { t: '阿尔诺芬尼夫妇像', a: '扬·凡·艾克', y: '1434', d: '墙上的凸面镜里映出整个房间，还有两个站在门口的人。镜子上方写着："扬·凡·艾克曾在此。"', c: ['#2a2420', '#2f6a4a', '#8a2f26', '#c9a45a'] },
+  athens: { t: '雅典学院', a: '拉斐尔', y: '1509–1511', d: '梵蒂冈的一面墙上聚集了古希腊的哲人。正中的柏拉图指着天，亚里士多德把手掌压向地面。', c: ['#d9c9a8', '#b5607a', '#3f5f9a', '#e9e2cf'] },
+  haywain: { t: '干草车', a: '约翰·康斯太勃尔', y: '1821', d: '英格兰萨福克郡的斯陶尔河。他对着天空画了大量写生，说天空是风景画的"基调"。', c: ['#8fa6b8', '#5f7a4a', '#8a6a3a', '#e9e2cf'] },
+  swing: { t: '秋千', a: '让-奥诺雷·弗拉戈纳尔', y: '约1767', d: '洛可可最出名的一幅。粉色裙子的少女荡到最高处，一只鞋飞了出去。', c: ['#5f8a7a', '#f0a8b0', '#e9e2cf', '#3a5a4a'] },
+  david: { t: '大卫', a: '米开朗基罗', y: '1501–1504', d: '一整块大理石雕成，高 5.17 米。他刻的是出手之前的那一刻：投石索搭在肩上，眉头紧锁，全身的重量落在右腿。', c: ['#eeeae0', '#d6d2c6', '#b9b4a6'] },
+  venusm: { t: '米洛的维纳斯', a: '古希腊', y: '约公元前150–前125', d: '1820 年在爱琴海的米洛斯岛出土，出土时双臂就已经不在。人们争论了两百年她原本的手在做什么。', c: ['#eeeae0', '#d6d2c6', '#b9b4a6'] },
+  thinker: { t: '思想者', a: '奥古斯特·罗丹', y: '约1880', d: '最初是《地狱之门》顶上的一个小像，俯视着下面的世界。后来罗丹把它放大成独立的雕塑。', c: ['#5a6a5a', '#3f4f42', '#8a9a84'] },
+});
+const WIKI = { cafe: 'Café Terrace at Night', yellow: 'The Yellow House', chair: "Van Gogh's Chair", starry: 'The Starry Night', rhone: 'Starry Night Over the Rhône', bridge: 'Langlois Bridge at Arles', crows: 'Wheatfield with Crows', sunflowers: 'Sunflowers (Van Gogh series)', irises: 'Irises (painting)', almond: 'Almond Blossoms', church: 'The Church at Auvers', sower: 'The Sower (Van Gogh)', cypress: 'Wheat Field with Cypresses', olive: 'Olive Trees (Van Gogh series)', poppy: 'Poppy Field (Van Gogh)', vineyard: 'The Red Vineyard', japan: 'Japonaiserie (Van Gogh)', moulin: 'Le Moulin de la Galette (Van Gogh series)', hay: 'Haystacks (Van Gogh series)', nightcafe: 'The Night Café', bedroom: 'Bedroom in Arles', gauguin: "Paul Gauguin's Armchair",
+  lilies: 'Water Lilies and Japanese Bridge', parasol: 'Woman with a Parasol – Madame Monet and Her Son', wave: 'The Great Wave off Kanagawa', scream: 'The Scream', jatte: 'A Sunday Afternoon on the Island of La Grande Jatte', jiangshan: 'A Thousand Li of Rivers and Mountains',
+  mona: 'Mona Lisa', supper: 'The Last Supper (Leonardo)', pearl: 'Girl with a Pearl Earring', milk: 'The Milkmaid (Vermeer)', venusb: 'The Birth of Venus', nightwatch: 'The Night Watch', meninas: 'Las Meninas', liberty: 'Liberty Leading the People', kiss: 'The Kiss (Klimt)', adam: 'The Creation of Adam', sunrise: 'Impression, Sunrise', wanderer: 'Wanderer above the Sea of Fog', arnolfini: 'Arnolfini Portrait', athens: 'The School of Athens', haywain: 'The Hay Wain', swing: 'The Swing (Fragonard)', david: 'David (Michelangelo)', venusm: 'Venus de Milo', thinker: 'The Thinker' };
+const WIKIQ = { sower: 'Sower with Setting Sun Van Gogh 1888', poppy: 'Van Gogh Poppy Field 1890', hay: 'Van Gogh Haystacks in Provence 1888', gauguin: "Van Gogh Gauguin's Chair 1888", lilies: 'Monet Bridge over a Pond of Water Lilies 1899' };
+const ART_IN = { lilies: 'monet', parasol: 'monet', wave: 'hokusai', scream: 'munch', jatte: 'seurat', jiangshan: 'jiangshan', wanderer: 'fog' };
+for (const k of ['mona', 'supper', 'pearl', 'milk', 'venusb', 'nightwatch', 'meninas', 'liberty', 'kiss', 'adam', 'sunrise', 'arnolfini', 'athens', 'haywain', 'swing', 'david', 'venusm', 'thinker']) ART_IN[k] = 'museum';
+for (const k in ART) { ART[k].w = WIKI[k]; ART[k].q = WIKIQ[k]; ART[k].in = ART_IN[k] || 'town'; }
+Object.assign(PEOPLE, {
+  mona: { n: '蒙娜丽莎', sub: '达·芬奇《蒙娜丽莎》 约1503–1519', d: '一般认为她是佛罗伦萨丝绸商人的妻子丽莎·盖拉尔迪尼。她双手交叠，坐在一道凉廊前，身后是想象出来的山水。', invite: 1, art: 'mona' },
+  david: { n: '大卫', sub: '米开朗基罗《大卫》 1501–1504', d: '佛罗伦萨人把他当作城市的象征：一个少年，站在比自己强大得多的对手面前。', invite: 1, art: 'david' },
+  venusm: { n: '米洛的维纳斯', sub: '古希腊 约公元前150–前125', d: '她微微扭着身子，衣褶从腰间滑下。没有了手臂，反而成了她最让人记住的地方。', invite: 1, art: 'venusm' },
+  thinker: { n: '思想者', sub: '罗丹《思想者》 约1880', d: '他托着下巴，连脚趾都在用力。罗丹说，他是在用全身的每一块肌肉思考。', invite: 1, art: 'thinker' },
+  wanderer: { n: '雾海上的旅人', sub: '弗里德里希 约1818', d: '深绿色的外衣，一根手杖，风把头发吹乱了。他一直望着云海，很少回头。', invite: 1, art: 'wanderer' },
+  visitor: { n: '看画的人', sub: '美术馆的访客', d: '在一幅画前站了很久。', invite: 0 },
+});
+PEOPLE.vincent.art = 'starry'; PEOPLE.roulin.art = null; PEOPLE.scream.art = 'scream'; PEOPLE.monetLady.art = 'parasol'; PEOPLE.seuratLady.art = 'jatte'; PEOPLE.sower.art = 'sower';
 const WORLD_INFO = {
   town: { n: '梵高小镇', sub: '阿尔勒 · 圣雷米 · 奥维尔', art: 'starry' },
+  museum: { n: '露天美术馆', sub: '蒙娜丽莎 · 大卫 · 十六幅名作', art: 'mona' },
   monet: { n: '睡莲池', sub: '莫奈 · 吉维尼花园', art: 'lilies' },
   hokusai: { n: '神奈川海岸', sub: '葛饰北斋 · 富岳三十六景', art: 'wave' },
   munch: { n: '峡湾之桥', sub: '蒙克 · 呐喊', art: 'scream' },
   seurat: { n: '大碗岛', sub: '修拉 · 星期天下午', art: 'jatte' },
   jiangshan: { n: '千里江山', sub: '王希孟 · 青绿山水', art: 'jiangshan' },
+  fog: { n: '雾海之巅', sub: '弗里德里希 · 雾海上的旅人', art: 'wanderer' },
 };

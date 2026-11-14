@@ -25,7 +25,7 @@ in vec3 vPos; in vec3 vNrm; in vec4 vCol; in vec4 vLamp; in vec2 vFog;
 uniform sampler2D uStroke;
 uniform vec3 uSunDir, uLight, uShade, uFogCol, uTint, uGlowCol, uNA, uNB; uniform float uNMix;
 uniform vec4 uP; // strokeScale, strokeAmt, lampAmt, glow
-uniform float uShadowAmt;
+uniform float uShadowAmt; uniform vec2 uRes;
 out vec4 o;
 void main(){
   vec3 n = normalize(vNrm); vec3 an = abs(n);
@@ -43,7 +43,8 @@ void main(){
   c = mix(c, mix(uNA, uNB, l)*(0.30 + lum*1.15), uNMix);
   c += (base*1.25 + 0.05)*vLamp.rgb*uP.z;
   c += mix(uGlowCol, vCol.rgb, 0.4)*vCol.a*uP.w*(0.7 + 0.7*s.r);
-  o = vec4(mix(c, uFogCol, vFog.x), 1.0);
+  vec2 vq = gl_FragCoord.xy*uRes - 0.5;
+  o = vec4(mix(c, uFogCol, vFog.x)*(1.0 - dot(vq, vq)*0.42), 1.0);
 }`;
 
 SH.charV = `#version 300 es
@@ -114,10 +115,13 @@ void main(){
   vec2 q = p; float acc = 0.0;
   if (uSw.x > 0.0) {
     for (int i = 0; i < NV; i++) {
-      vec2 e = q - VT[i].xy; float f = exp(-length(e)/VT[i].z*1.5);
-      float a = uSw.x*VT[i].w*4.4*f; float c = cos(a), s = sin(a);
-      q = VT[i].xy + vec2(c*e.x - s*e.y, s*e.x + c*e.y);
-      acc += f;
+      vec2 e = q - VT[i].xy; float el = length(e)/VT[i].z;
+      if (el < 4.5) {
+        float f = exp(-el*1.5);
+        float a = uSw.x*VT[i].w*4.4*f; float c = cos(a), s = sin(a);
+        q = VT[i].xy + vec2(c*e.x - s*e.y, s*e.x + c*e.y);
+        acc += f;
+      }
     }
   }
   q.y += uSw.y*sin(q.x*2.3 + 1.7*sin(q.y*1.6) + uTime*0.06);
@@ -181,7 +185,7 @@ precision highp float;
 in vec3 vPos; in vec4 vCol; in float vFog;
 uniform sampler2D uStroke;
 uniform vec3 uCam, uWA, uWB, uWC, uFogCol, uReflCol, uSunCol, uSunDir;
-uniform vec4 uW; uniform vec4 uRefl[8]; uniform vec2 uWP; // lampAmt, glitter
+uniform vec4 uW; uniform vec4 uRefl[8]; uniform vec2 uWP; uniform vec2 uRes; // lampAmt, glitter
 out vec4 o;
 void main(){
   vec2 uv = vPos.xz; float t = uW.x;
@@ -207,7 +211,8 @@ void main(){
     float g = exp(-ac*ac/max(10.0 + al*1.2, 4.0))*smoothstep(2.0, 14.0, al)*smoothstep(0.52, 0.80, s.g*0.6 + s.r*0.4);
     c += uSunCol*g*uWP.y;
   }
-  o = vec4(mix(c, uFogCol, vFog), 1.0);
+  vec2 vq = gl_FragCoord.xy*uRes - 0.5;
+  o = vec4(mix(c, uFogCol, vFog)*(1.0 - dot(vq, vq)*0.42), 1.0);
 }`;
 
 SH.sprV = `#version 300 es
@@ -235,6 +240,27 @@ void main(){
   }
 }`;
 
+SH.blitV = `#version 300 es
+layout(location=0) in vec2 aPos; void main(){ gl_Position = vec4(aPos, 1.0, 1.0); }`;
+SH.blitF = `#version 300 es
+precision mediump float;
+uniform sampler2D uTex; uniform vec2 uRes; out vec4 o;
+void main(){ vec2 uv = gl_FragCoord.xy*uRes; vec2 vq = uv - 0.5; o = vec4(texture(uTex, uv).rgb*(1.0 - dot(vq, vq)*0.42), 1.0); }`;
+SH.picV = `#version 300 es
+layout(location=0) in vec3 aPos; layout(location=1) in vec2 aUV;
+uniform mat4 uVP; uniform vec3 uCam; uniform float uFogD; out vec2 vUV; out float vFog;
+void main(){ gl_Position = uVP*vec4(aPos,1.0); vUV = aUV; vFog = 1.0 - exp(-pow(distance(aPos, uCam)*uFogD, 1.5)); }`;
+SH.picF = `#version 300 es
+precision mediump float;
+in vec2 vUV; in float vFog; uniform sampler2D uTex; uniform vec3 uTintC, uFogCol, uC0, uC1, uC2; uniform float uHas; out vec4 o;
+void main(){
+  vec3 c = texture(uTex, vUV).rgb;
+  if (uHas < 0.5) { // a colour study in the painting's own palette until the real picture arrives
+    vec4 s = texture(uTex, vUV*vec2(0.55, 0.8)); vec4 s2 = texture(uTex, vUV*0.16 + 0.3);
+    c = mix(uC0, uC1, smoothstep(0.3, 0.7, s2.r + (s.r - 0.5)*0.5)); c = mix(c, uC2, smoothstep(0.55, 0.8, s2.g + (s.g - 0.5)*0.4)); c *= 0.85 + 0.3*s.r;
+  }
+  o = vec4(mix(c*uTintC, uFogCol, vFog), 1.0);
+}`;
 SH.portalV = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec2 aUV;
 uniform mat4 uVP; out vec2 vUV;
@@ -306,6 +332,13 @@ void main(){
     c = mix(c, uC2, smoothstep(0.012, 0.0, max(abs(p.x - 0.22) - 0.05, max(p.y - 0.12, -p.y - 0.42))));
     c = mix(c, uC3, smoothstep(0.012, 0.0, max(abs(p.y + 0.52) - 0.2, abs(p.x) - 0.5 - (p.y + 0.5)*-0.5)));
     c = mix(c, vec3(1.0), smoothstep(0.03, 0.015, length(p - vec2(-0.13, -0.20))));
+  } else if (uId == 7) { // wanderer above the sea of fog
+    c = mix(uC1, uC0, smoothstep(-0.2, 0.9, p.y + s2.r*0.3));
+    for (int i = 0; i < 3; i++) { float fi = float(i); float x = p.x*(1.4 + fi*0.6) + fi*1.7; float ridge = -0.05 - fi*0.2 + 0.2*abs(sin(x*2.1)) + 0.08*sin(x*5.3); c = mix(c, mix(uC3, uC1, 0.55 - fi*0.2), smoothstep(0.012, 0.0, p.y - ridge)*0.75); }
+    c = mix(c, uC1, smoothstep(0.0, -0.3, p.y + 0.35 + 0.08*sin(p.x*6.0 + t*0.4)));
+    float rock = max(abs(p.x)*0.9 - 0.42 - (p.y + 0.62)*-0.9, p.y + 0.42); c = mix(c, uC2*0.7, smoothstep(0.012, 0.0, rock));
+    float man = max(abs(p.x) - 0.075 - (-0.06 - p.y)*0.07, max(p.y + 0.06, -p.y - 0.46)); c = mix(c, uC2, smoothstep(0.012, 0.0, man));
+    c = mix(c, vec3(0.80, 0.52, 0.30), smoothstep(0.012, 0.0, length(p - vec2(0.0, 0.0)) - 0.06));
   } else { // starry night — the way home
     vec2 e = p - vec2(0.1, 0.25); float a = 5.0*exp(-length(e)*3.0);
     vec2 q = vec2(cos(a)*e.x - sin(a)*e.y, sin(a)*e.x + cos(a)*e.y);
@@ -331,16 +364,16 @@ class Renderer {
     if (!gl) throw new Error('WebGL2 unavailable');
     this.gl = gl;
     this.prog = {};
-    for (const n of ['world', 'char', 'sky', 'water', 'spr', 'portal']) this.prog[n] = this._program(SH[n + 'V'], SH[n + 'F']);
+    for (const n of ['world', 'char', 'sky', 'water', 'spr', 'portal', 'blit', 'pic']) this.prog[n] = this._program(SH[n + 'V'], SH[n + 'F']);
     this.tex = {};
-    this.scale = 1; this.w = 1; this.h = 1;
+    this.scale = 1; this.w = 1; this.h = 1; this.skyScale = 0.6;
     // fullscreen triangle
     this.fsVao = gl.createVertexArray(); gl.bindVertexArray(this.fsVao);
     const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     // dynamic sprite buffer
-    this.sprMax = 1024; this.sprData = new Float32Array(this.sprMax * 4 * 9);
+    this.sprMax = 1300; this.sprData = new Float32Array(this.sprMax * 4 * 9);
     this.sprVao = gl.createVertexArray(); gl.bindVertexArray(this.sprVao);
     this.sprBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.sprBuf);
     gl.bufferData(gl.ARRAY_BUFFER, this.sprData.byteLength, gl.DYNAMIC_DRAW);
@@ -370,34 +403,35 @@ class Renderer {
   }
   /* brush-stroke atlas: R value, G hue selector, B gap between strokes */
   makeStroke(name, mode, seed) {
-    const gl = this.gl, S = 512, D = new Uint8Array(S * S * 4), rng = RNG(seed || 7);
+    const gl = this.gl, S = 1024, K = S / 512, D = new Uint8Array(S * S * 4), rng = RNG(seed || 7);
     for (let i = 0; i < S * S; i++) { D[i * 4] = 110 + rng() * 36; D[i * 4 + 1] = 110 + rng() * 36; D[i * 4 + 2] = 40; D[i * 4 + 3] = 255; }
     const stamp = (x, y, ang, len, wid, r, g, round) => {
+      x *= K; y *= K; len *= K; wid *= K;
       const dx = Math.cos(ang), dy = Math.sin(ang), hw = wid / 2, ext = Math.ceil(len / 2 + hw + 2);
-      const fr = 0.5 + rng() * 0.9, ph = rng() * 9, grad = rng.s() * 22;
+      const fr = (0.5 + rng() * 0.9) / K, ph = rng() * 9, grad = rng.s() * 22;
       for (let j = -ext; j <= ext; j++) for (let i = -ext; i <= ext; i++) {
         const al = i * dx + j * dy, ac = -i * dy + j * dx;
         const cl = Math.max(-len / 2, Math.min(len / 2, al)), d = Math.hypot(al - cl, ac);
         if (d > hw) continue;
         const px = ((Math.round(x) + i) % S + S) % S, py = ((Math.round(y) + j) % S + S) % S, k = (py * S + px) * 4;
-        const edge = sstep(hw - 2.4, hw, d);
+        const edge = sstep(hw - 2.4 * K, hw, d);
         const bristle = round ? 0 : Math.sin(ac * fr + ph) * 16 + Math.sin(ac * fr * 2.7 + ph * 2) * 7;
         D[k] = clamp(r + bristle + grad * (al / len) + (1 - edge) * 6, 0, 255);
         D[k + 1] = g; D[k + 2] = edge * 255;
       }
     };
     if (mode === 'dots') {
-      for (let n = 0; n < 5200; n++) stamp(rng() * S, rng() * S, 0, 0, rng.r(9, 15), rng.r(30, 225), rng.r(10, 245), true);
+      for (let n = 0; n < 5200; n++) stamp(rng() * 512, rng() * 512, 0, 0, rng.r(9, 15), rng.r(30, 225), rng.r(10, 245), true);
     } else if (mode === 'paper') {
-      for (let n = 0; n < 2600; n++) stamp(rng() * S, rng() * S, rng.s() * 0.2, rng.r(60, 180), rng.r(3, 7), rng.r(108, 148), rng.r(108, 148), true);
+      for (let n = 0; n < 2600; n++) stamp(rng() * 512, rng() * 512, rng.s() * 0.2, rng.r(60, 180), rng.r(3, 7), rng.r(108, 148), rng.r(108, 148), true);
       for (let i = 0; i < S * S; i++) D[i * 4 + 2] = D[i * 4 + 2] * 0.25;
     } else if (mode === 'dab') {
-      for (let n = 0; n < 4200; n++) stamp(rng() * S, rng() * S, rng.s() * 0.9, rng.r(10, 26), rng.r(10, 17), rng.r(35, 220), rng.r(15, 240), false);
+      for (let n = 0; n < 4200; n++) stamp(rng() * 512, rng() * 512, rng.s() * 0.9, rng.r(10, 26), rng.r(10, 17), rng.r(35, 220), rng.r(15, 240), false);
       for (let i = 0; i < S * S; i++) D[i * 4 + 2] = D[i * 4 + 2] * 0.5;
     } else {
       for (let n = 0; n < 3400; n++) {
         const big = n < 900;
-        stamp(rng() * S, rng() * S, (rng() + rng() + rng() - 1.5) * 0.42, big ? rng.r(46, 96) : rng.r(26, 60), big ? rng.r(12, 19) : rng.r(8, 13), rng.r(28, 228), rng.r(15, 240), false);
+        stamp(rng() * 512, rng() * 512, (rng() + rng() + rng() - 1.5) * 0.42, big ? rng.r(46, 96) : rng.r(26, 60), big ? rng.r(12, 19) : rng.r(8, 13), rng.r(28, 228), rng.r(15, 240), false);
       }
     }
     const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
@@ -407,6 +441,7 @@ class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     const ext = gl.getExtension('EXT_texture_filter_anisotropic');
     if (ext) gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     this.tex[name] = t; return t;
   }
   /* static geometry */
@@ -458,6 +493,7 @@ class Renderer {
   begin(cam, env, time) {
     const gl = this.gl;
     this.cam = cam; this.env = env; this.time = time;
+    this.paintSky(cam, env, time);
     gl.viewport(0, 0, this.w, this.h);
     gl.depthMask(true); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
     gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -472,7 +508,7 @@ class Renderer {
     gl.uniform3fv(u.uSunDir, e.sunDir); gl.uniform3fv(u.uLight, e.light); gl.uniform3fv(u.uShade, e.shade);
     gl.uniform3fv(u.uFogCol, e.fog); gl.uniform3fv(u.uTint, e.tint);
     gl.uniform4f(u.uP, e.strokeScale, e.strokeAmt, e.lampAmt, e.glow); gl.uniform1f(u.uShadowAmt, e.shadowAmt);
-    gl.uniform1i(u.uStroke, 0); gl.uniform3fv(u.uGlowCol, e.glowCol); gl.uniform3fv(u.uNA, e.nightA); gl.uniform3fv(u.uNB, e.nightB); gl.uniform1f(u.uNMix, e.nightMix);
+    gl.uniform1i(u.uStroke, 0); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h); gl.uniform3fv(u.uGlowCol, e.glowCol); gl.uniform3fv(u.uNA, e.nightA); gl.uniform3fv(u.uNB, e.nightB); gl.uniform1f(u.uNMix, e.nightMix);
     gl.bindVertexArray(m.vao);
     if (m.chunks) {
       const md = maxDist || 1e9, cx = c.pos[0], cz = c.pos[2], C = this.mdC, O = this.mdO; let n = 0;
@@ -509,7 +545,7 @@ class Renderer {
     gl.uniform4f(u.uW, this.time, e.wind, e.fogD, 0);
     gl.uniform3fv(u.uWA, e.waterA); gl.uniform3fv(u.uWB, e.waterB); gl.uniform3fv(u.uWC, e.waterC);
     gl.uniform3fv(u.uFogCol, e.fog); gl.uniform3fv(u.uReflCol, e.reflCol); gl.uniform3fv(u.uSunCol, e.glitCol); gl.uniform3fv(u.uSunDir, e.sunDir);
-    gl.uniform4fv(u.uRefl, refl); gl.uniform2f(u.uWP, e.lampAmt * e.reflAmt, e.glitter);
+    gl.uniform4fv(u.uRefl, refl); gl.uniform2f(u.uWP, e.lampAmt * e.reflAmt, e.glitter); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h);
     gl.uniform1i(u.uStroke, 0);
     gl.bindVertexArray(m.vao); gl.drawElements(gl.TRIANGLES, m.ni, m.type, 0); this.drawn += m.ni;
   }
@@ -525,11 +561,28 @@ class Renderer {
     }
     gl.bindTexture(gl.TEXTURE_2D, this.tex[this.env.stroke] || this.tex.oil);
   }
-  drawSky() {
-    const gl = this.gl, pr = this.prog.sky, u = pr.u, e = this.env, c = this.cam, k = e.sky;
+  _skyTarget() {
+    const gl = this.gl, w = Math.max(2, Math.round(this.w * this.skyScale)), h = Math.max(2, Math.round(this.h * this.skyScale));
+    if (this.skyW === w && this.skyH === h) return;
+    this.skyW = w; this.skyH = h;
+    if (!this.skyTex) { this.skyTex = gl.createTexture(); this.skyFbo = gl.createFramebuffer(); }
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.skyTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.skyFbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.skyTex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.activeTexture(gl.TEXTURE0);
+  }
+  /* the sky is the costliest shader: paint it small first, enlarge it behind the scene later */
+  paintSky(cam, env, time) {
+    const gl = this.gl, pr = this.prog.sky, u = pr.u, e = env, c = cam, k = e.sky;
+    this._skyTarget();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.skyFbo); gl.viewport(0, 0, this.skyW, this.skyH);
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.depthMask(false);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex[env.stroke] || this.tex.oil);
     gl.useProgram(pr.p);
     gl.uniform3fv(u.uR, c.skyR); gl.uniform3fv(u.uU, c.skyU); gl.uniform3fv(u.uF, c.fwd);
-    gl.uniform1f(u.uTime, this.time); gl.uniform1i(u.uStroke, 0);
+    gl.uniform1f(u.uTime, time); gl.uniform1i(u.uStroke, 0);
     gl.uniform3fv(u.uSkyA, k.A); gl.uniform3fv(u.uSkyB, k.B); gl.uniform3fv(u.uSkyC, k.C); gl.uniform3fv(u.uAccent, k.accent);
     gl.uniform3fv(u.uHorizon, k.horizon); gl.uniform3fv(u.uFogCol, e.fog); gl.uniform3fv(u.uCloudCol, k.cloudCol);
     gl.uniform3fv(u.uSunCol, k.sunCol); gl.uniform3fv(u.uHaloCol, k.haloCol);
@@ -537,15 +590,47 @@ class Renderer {
     gl.uniform3f(u.uSunP, s[0] / d, s[2] / d, k.sunAmt);
     gl.uniform4f(u.uSw, k.swirl, k.wave, k.band, k.flow); gl.uniform4f(u.uSt, k.stars, k.crescent, k.cloud, k.sunSize);
     gl.bindVertexArray(this.fsVao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.depthMask(true);
   }
-  /* sprites: mode 0 soft shadow (alpha), 1 glow (additive), 2 birds (alpha) */
-  sprBegin() { this.sprQ = [[], [], []]; }
-  spr(mode, x, y, z, rx, ry, rz, ux, uy, uz, r, g, b, a) { this.sprQ[mode].push(x, y, z, rx, ry, rz, ux, uy, uz, r, g, b, a); }
+  drawSky() {
+    const gl = this.gl, pr = this.prog.blit, u = pr.u;
+    gl.useProgram(pr.p); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.skyTex);
+    gl.uniform1i(u.uTex, 1); gl.uniform2f(u.uRes, 1 / this.w, 1 / this.h);
+    gl.bindVertexArray(this.fsVao); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.activeTexture(gl.TEXTURE0);
+  }
+  /* framed pictures with real textures (museum) */
+  uploadPics(quads) { return this.uploadPortal(quads); }
+  picTexture(img) {
+    const gl = this.gl, t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img); } catch (e) { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.deleteTexture(t); return null; }
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, this.tex[this.env ? this.env.stroke : 'oil'] || this.tex.oil);
+    return t;
+  }
+  drawPics(m, list) {
+    const gl = this.gl, pr = this.prog.pic, u = pr.u, e = this.env;
+    gl.useProgram(pr.p); gl.uniformMatrix4fv(u.uVP, false, this.cam.vp); gl.uniform3fv(u.uCam, this.cam.pos); gl.uniform1f(u.uFogD, e.fogD); gl.uniform3fv(u.uFogCol, e.fog);
+    const k = 1 - e.nightMix * 0.45; gl.uniform3f(u.uTintC, k, k, k * 1.02 + e.nightMix * 0.08); gl.uniform1i(u.uTex, 0);
+    gl.bindVertexArray(m.vao);
+    for (let i = 0; i < list.length; i++) { const q = list[i]; gl.bindTexture(gl.TEXTURE_2D, q.tex || this.tex.oil); gl.uniform1f(u.uHas, q.tex ? 1 : 0); if (!q.tex) { gl.uniform3fv(u.uC0, q.c[0]); gl.uniform3fv(u.uC1, q.c[1]); gl.uniform3fv(u.uC2, q.c[2]); } gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, i * 12); }
+    gl.bindTexture(gl.TEXTURE_2D, this.tex[e.stroke] || this.tex.oil);
+  }
+  /* sprites: mode 0 soft blobs (alpha), 1 glow (additive), 2 birds (alpha) */
+  sprBegin() { if (!this.sq) { this.sq = [new Float32Array(13 * 700), new Float32Array(13 * 400), new Float32Array(13 * 200)]; this.sn = [0, 0, 0]; } this.sn[0] = this.sn[1] = this.sn[2] = 0; }
+  spr(mode, x, y, z, rx, ry, rz, ux, uy, uz, r, g, b, a) {
+    const Q = this.sq[mode]; let i = this.sn[mode]; if (i + 13 > Q.length) return;
+    Q[i++] = x; Q[i++] = y; Q[i++] = z; Q[i++] = rx; Q[i++] = ry; Q[i++] = rz; Q[i++] = ux; Q[i++] = uy; Q[i++] = uz; Q[i++] = r; Q[i++] = g; Q[i++] = b; Q[i++] = a; this.sn[mode] = i;
+  }
   sprFlush() {
     const gl = this.gl, D = this.sprData; let n = 0;
     for (let mode = 0; mode < 3; mode++) {
-      const Q = this.sprQ[mode]; this.sprOff[mode] = n; let c = 0;
-      for (let i = 0; i < Q.length && n < this.sprMax; i += 13, n++, c++) {
+      const Q = this.sq[mode], len = this.sn[mode]; this.sprOff[mode] = n; let c = 0;
+      for (let i = 0; i < len && n < this.sprMax; i += 13, n++, c++) {
         const x = Q[i], y = Q[i + 1], z = Q[i + 2], rx = Q[i + 3], ry = Q[i + 4], rz = Q[i + 5], ux = Q[i + 6], uy = Q[i + 7], uz = Q[i + 8];
         for (let k = 0; k < 4; k++) {
           const sx = (k === 1 || k === 2) ? 1 : -1, sy = k >= 2 ? 1 : -1, o = (n * 4 + k) * 9;

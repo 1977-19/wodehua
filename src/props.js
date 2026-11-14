@@ -2,7 +2,7 @@
 /* Shared building blocks for every world: houses, trees, flowers, lamps, frames. */
 function mkCtx(seed, H) {
   return { m: new Mesh(90000), d: new Mesh(90000), w: new Mesh(4096), rng: RNG(seed), H: H || (() => 0),
-    boxes: [], circles: [], lamps: [], glows: [], occB: [], occS: [], spots: [], npcs: [], portals: [], seats: [], birds: [], petals: [], pq: [] };
+    boxes: [], circles: [], lamps: [], glows: [], occB: [], occS: [], spots: [], npcs: [], portals: [], seats: [], birds: [], petals: [], pq: [], picq: [], pics: [] };
 }
 function addBox(ctx, x, z, w, d, rot, h, noShadow) {
   const b = { x, z, hw: w / 2, hd: d / 2, c: Math.cos(rot || 0), s: Math.sin(rot || 0), h: h || 6 };
@@ -33,7 +33,22 @@ function house(ctx, o) {
   else if (rt === 'hip') m.hip(0, h + 0.1, 0, w + ov * 2, d + ov * 2, rh, Math.abs(w - d) * 0.6);
   else { m.box(0, h + 0.1, 0, w + 0.2, 0.3, d + 0.2, 61); }
   if (rt === 'gable') { m.c(mulc(roofC, 0.62)); if (alongX) m.box(0, h + rh + 0.03, 0, w + ov * 2, 0.1, 0.16, 61); else m.box(0, h + rh + 0.03, 0, 0.16, 0.1, d + ov * 2, 61); }
-  if (o.chimney !== 0) { const cx = (rng() - 0.5) * w * 0.5, cz = (rng() - 0.5) * d * 0.3; m.c(mulc(wall, 0.85)); m.box(cx, h + rh * 0.3, cz, 0.6, rh * 0.75 + 0.7, 0.6, 61); m.c(mulc(roofC, 0.7)); m.box(cx, h + rh * 1.05 + 0.7, cz, 0.78, 0.14, 0.78, 63); }
+  if (o.chimney !== 0) { const cx = (rng() - 0.5) * w * 0.5, cz = (rng() - 0.5) * d * 0.3; m.c(mulc(wall, 0.85)); m.box(cx, h + rh * 0.3, cz, 0.6, rh * 0.75 + 0.7, 0.6, 61); m.c(mulc(roofC, 0.7)); m.box(cx, h + rh * 1.05 + 0.7, cz, 0.78, 0.14, 0.78, 63); m.c('#c9703a'); for (const s of [-0.15, 0.15]) m.cyl(cx + s, h + rh * 1.05 + 0.84, cz, 0.09, 0.07, 0.3, 6, 1); }
+  if (rt === 'gable' && !o.plain) { // rows of tiles, dormers
+    const rc2 = mulc(roofC, 0.74), E = (alongX ? d : w) / 2 + ov, L = (alongX ? w : d) / 2 + ov;
+    for (const s of [-1, 1]) for (const t of [0.22, 0.47, 0.72]) {
+      const a = E * (1 - t), b = E * (1 - t - 0.035), ya = h + 0.14 + rh * t, yb = h + 0.14 + rh * (t + 0.035); m.c(rc2);
+      if (alongX) { if (s > 0) m.quad([-L, ya, a], [L, ya, a], [L, yb, b], [-L, yb, b]); else m.quad([L, ya, -a], [-L, ya, -a], [-L, yb, -b], [L, yb, -b]); }
+      else { if (s > 0) m.quad([a, ya, L], [a, ya, -L], [b, yb, -L], [b, yb, L]); else m.quad([-a, ya, -L], [-a, ya, L], [-b, yb, L], [-b, yb, -L]); }
+    }
+    if (alongX && floors >= 2 && w > 8) for (const dx of (w > 11 ? [-w * 0.25, w * 0.25] : [0])) {
+      const dz = d * 0.27, dy = h + 0.1 + rh * (1 - dz / (d / 2 + ov));
+      m.c(mulc(wall, 0.95)); m.box(dx, dy - 0.5, dz + 0.5, 1.3, 1.5, 1.4, 61); m.c(jit(roofC, rng, 0.01, 0.03)); m.gable(dx, dy + 1.0, dz + 0.45, 1.7, 1.7, 0.6, false, mulc(wall, 0.9));
+      m.c(trim, 0); m.box(dx, dy - 0.02, dz + 1.21, 0.86, 0.9, 0.05, 31); m.c(rng() < lit ? '#f6c648' : '#33466e', rng() < lit ? 0.8 : 0); m.box(dx, dy + 0.04, dz + 1.24, 0.7, 0.78, 0.05, 16);
+    }
+  }
+  if (floors >= 2 && !o.plain) { m.c(mulc(wall, 1.1)); for (let f = 1; f < floors; f++) m.box(0, f * h / floors - 0.06, 0, w + 0.14, 0.13, d + 0.14, 60); }
+  if (!o.plain) { m.c('#3a4658'); m.cyl(w / 2 + 0.06, 0, d / 2 + 0.06, 0.06, 0.06, h, 5, 0); }
   // facades
   const fh = h / floors, ww = o.winW || 1.0, wh = o.winH || Math.min(1.7, fh * 0.56);
   const facade = (ang, dist, width, cols, doorAt, shop) => {
@@ -46,7 +61,9 @@ function house(ctx, o) {
         m.c(trim, 0); m.box(cx, 0, 0.02, 1.25, 2.45, 0.1, 31);
         m.c(dc, 0); m.box(cx, 0, 0.06, 1.0, 2.25, 0.1, 31);
         m.c(mulc(dc, 0.7)); m.box(cx, 1.0, 0.1, 0.8, 0.06, 0.06, 31); m.c('#e9c95a'); m.box(cx + 0.33, 1.05, 0.12, 0.08, 0.08, 0.06, 31);
-        m.c('#b9aeb4'); m.box(cx, 0, 0.3, 1.5, 0.14, 0.6, 61);
+        m.c('#b9aeb4'); m.box(cx, 0, 0.3, 1.5, 0.14, 0.6, 61); m.box(cx, 0, 0.62, 1.8, 0.07, 0.4, 61);
+        m.c(trim, 0); m.push().T(cx, 2.45, 0.02); for (let q = 0; q < 6; q++) { const a0 = q / 6 * Math.PI, a1 = (q + 1) / 6 * Math.PI; m.quad([Math.cos(a0) * 0.62, 0, 0.1], [Math.cos(a0) * 0.62, Math.sin(a0) * 0.45, 0.1], [Math.cos(a1) * 0.62, Math.sin(a1) * 0.45, 0.1], [Math.cos(a1) * 0.62, 0, 0.1]); } m.pop();
+        m.c('#f6c648', lit > 0.3 ? 0.7 : 0); m.push().T(cx, 2.47, 0.04); for (let q = 0; q < 6; q++) { const a0 = q / 6 * Math.PI, a1 = (q + 1) / 6 * Math.PI; m.tri([0, 0, 0.1], [Math.cos(a0) * 0.5, Math.sin(a0) * 0.35, 0.1], [Math.cos(a1) * 0.5, Math.sin(a1) * 0.35, 0.1]); } m.pop();
         continue;
       }
       if (f === 0 && shop) {
@@ -54,6 +71,7 @@ function house(ctx, o) {
         m.c(trim, 0); m.box(cx, 0.5, 0.02, sw + 0.2, 2.1, 0.1, 31);
         m.c('#f5c24a', 0.95); m.box(cx, 0.6, 0.06, sw, 1.9, 0.1, 31);
         m.c(trim, 0); m.box(cx, 0.6, 0.1, 0.07, 1.9, 0.07, 31); m.box(cx, 1.85, 0.1, sw, 0.07, 0.07, 31);
+        if (k === 1 && !o.noSign) { m.c('#27303a'); m.box(cx + sw * 0.6, 3.05, 0.5, 0.05, 0.05, 1.0, 63); m.c(jit(hex(rng.pick(['#c2452f', '#3f6fb0', '#3f8a5a', '#e2b23c'])), rng, 0.02, 0.04)); m.box(cx + sw * 0.6, 2.35, 0.75, 0.07, 0.62, 0.8, 63); m.c('#f1ead6', 0); m.ell(cx + sw * 0.6, 2.66, 0.75, 0.05, 0.16, 0.2, 6, 4); }
         continue;
       }
       const on = rng() < lit;
@@ -62,6 +80,8 @@ function house(ctx, o) {
       m.box(cx, cy, 0.05, ww, wh, 0.09, 16);
       m.c(trim, 0); m.box(cx, cy, 0.09, 0.055, wh, 0.05, 16); m.box(cx, cy + wh * 0.55, 0.09, ww, 0.055, 0.05, 16);
       if (o.sill !== 0) { m.c(mulc(wall, 1.12)); m.box(cx, cy - 0.16, 0.1, ww + 0.3, 0.1, 0.22, 31); }
+      if (!o.plain && f > 0 && rng() < 0.3) { m.c('#7a4a2e'); m.box(cx, cy - 0.42, 0.22, ww + 0.2, 0.22, 0.26, 31); for (let q = 0; q < 4; q++) { m.c(jit(hex(rng.pick(['#d93a2b', '#f08a9a', '#f6e27a', '#e86a3a'])), rng, 0.02, 0.05)); m.ell(cx - ww * 0.4 + q * ww * 0.27, cy - 0.14, 0.24, 0.14, 0.12, 0.13, 5, 3); } m.c('#4f8a4a'); m.ell(cx, cy - 0.22, 0.25, ww * 0.55, 0.08, 0.13, 6, 3); }
+      else if (!o.plain && f === 1 && floors >= 3 && rng() < 0.3) { m.c('#b9aeb4'); m.box(cx, cy - 0.3, 0.42, ww + 0.9, 0.1, 0.84, 63); m.c('#27303a'); for (let q = 0; q <= 6; q++) m.box(cx - (ww + 0.8) / 2 + q * (ww + 0.8) / 6, cy - 0.2, 0.8, 0.04, 0.85, 0.04, 61); m.box(cx, cy + 0.63, 0.8, ww + 0.86, 0.05, 0.05, 63); }
       if (shut) { m.c(jit(shut, rng, 0.01, 0.04)); const open = rng() < 0.85; if (open) { m.box(cx - ww * 0.78, cy - 0.03, 0.05, ww * 0.5, wh + 0.06, 0.07, 31); m.box(cx + ww * 0.78, cy - 0.03, 0.05, ww * 0.5, wh + 0.06, 0.07, 31); } else m.box(cx, cy - 0.03, 0.11, ww + 0.04, wh + 0.06, 0.06, 31); }
     }
     m.pop();
@@ -137,8 +157,9 @@ function tree(ctx, x, z, o) {
     for (let i = 0; i < n; i++) {
       const r = blob * (0.7 + rng() * 0.6);
       m.c(jit(rng.pick(leaves), rng, 0.02, 0.05));
-      m.ell(t[0] + rng.s() * blob * 0.7, t[1] + rng.s() * blob * 0.3 + r * 0.2, t[2] + rng.s() * blob * 0.7, r, r * squash, r, o.lo ? 5 : 6, o.lo ? 3 : 4);
+      m.ell(t[0] + rng.s() * blob * 0.7, t[1] + rng.s() * blob * 0.3 + r * 0.2, t[2] + rng.s() * blob * 0.7, r, r * squash, r, o.lo ? 5 : 7, o.lo ? 3 : 5);
     }
+    if (!o.lo) for (let i = 0; i < 2; i++) { const r = blob * (0.34 + rng() * 0.22); m.c(jit(mixc(rng.pick(leaves), [1, 1, 0.8], 0.22), rng, 0.02, 0.05)); m.ell(t[0] + rng.s() * blob * 0.9, t[1] + blob * (0.35 + rng() * 0.4) * squash, t[2] + rng.s() * blob * 0.9, r, r * squash, r, 6, 4); }
   }
   m.sway(0);
   if (!o.noCollide) addCircle(ctx, x, z, Math.max(0.35, (o.rad || h * 0.045) * 2.2));
@@ -263,15 +284,65 @@ function cafeTable(ctx, x, z, y, o) {
   if (o.cup !== 0) { m.c('#f7f4ea'); m.cyl(x + 0.14, y + 0.76, z + 0.05, 0.035, 0.045, 0.06, 6, 1); m.c('#7a4a2a'); m.cyl(x - 0.12, y + 0.76, z - 0.08, 0.03, 0.022, 0.2, 6, 1); }
   addCircle(ctx, x, z, 0.45);
 }
-function chair(ctx, x, z, y, rot, o) {
-  const m = ctx.m; o = o || {}; const c = hex(o.col || '#c98a2e'), sc = hex(o.seat || '#e3c56a');
+function chair(ctx, x, z, y, rot, o) { // the rush-seated chair of the Yellow House
+  const m = ctx.m; o = o || {}; const c = hex(o.col || '#d2982e'), sc = hex(o.seat || '#e6cd72'), c2 = mulc(c, 0.78);
   m.push().T(x, y, z).RY(rot);
-  m.c(c); for (const sx of [-1, 1]) { m.box(sx * 0.19, 0, 0.19, 0.045, 0.46, 0.045, 60); m.box(sx * 0.19, 0, -0.19, 0.045, 0.95, 0.045, 61); }
-  m.c(sc); m.box(0, 0.44, 0, 0.44, 0.05, 0.44, 63);
-  m.c(c); m.box(0, 0.62, -0.19, 0.4, 0.06, 0.035, 63); m.box(0, 0.8, -0.19, 0.4, 0.08, 0.035, 63);
-  m.box(0, 0.2, 0.19, 0.38, 0.03, 0.03, 63);
+  for (const sx of [-1, 1]) { m.c(c); m.cyl(sx * 0.2, 0, 0.19, 0.026, 0.03, 0.47, 6, 1); m.cyl(sx * 0.2, 0, -0.2, 0.028, 0.03, 0.5, 6, 0); m.push().T(sx * 0.2, 0.5, -0.2).RX(-0.1); m.cyl(0, 0, 0, 0.026, 0.022, 0.52, 6, 1); m.ell(0, 0.53, 0, 0.03, 0.03, 0.03, 5, 3); m.pop(); m.c(c2); m.box(sx * 0.2, 0.18, 0, 0.026, 0.026, 0.38, 63); m.box(sx * 0.2, 0.32, 0, 0.026, 0.026, 0.38, 63); }
+  m.c(c2); m.box(0, 0.2, 0.19, 0.38, 0.026, 0.026, 63); m.box(0, 0.26, -0.2, 0.38, 0.026, 0.026, 63);
+  m.c(c); m.box(0, 0.435, 0, 0.46, 0.035, 0.46, 63);
+  m.c(sc); m.box(0, 0.47, 0, 0.4, 0.022, 0.4, 61); m.c(mulc(sc, 0.82)); m.quad([-0.2, 0.494, 0.2], [0.2, 0.494, -0.2], [0.17, 0.494, -0.2], [-0.2, 0.494, 0.17]); m.quad([0.2, 0.494, 0.2], [0.2, 0.494, 0.17], [-0.17, 0.494, -0.2], [-0.2, 0.494, -0.2]);
+  m.c(c); for (const yy of [0.62, 0.78, 0.94]) { m.push().T(0, yy, -0.2 - (yy - 0.5) * 0.1); m.tube([[-0.2, 0, 0], [-0.1, 0.012, -0.025], [0, 0.016, -0.033], [0.1, 0.012, -0.025], [0.2, 0, 0]], 0.02, 5); m.pop(); }
   m.pop();
-  if (!o.noSeat) ctx.seats.push({ x, z, y: y + 0.48 - 0.86 + 0.37, rot, tag: o.tag });
+  if (!o.noSeat) ctx.seats.push({ x, z, y: y + 0.49 - 0.49, rot, tag: o.tag });
+  if (!o.free) addCircle(ctx, x, z, 0.26);
+}
+function armchair(ctx, x, z, y, rot, o) { // Gauguin's armchair
+  const m = ctx.m; o = o || {}; const c = hex(o.col || '#6a3a2a'), sc = hex(o.seat || '#3f7a5a');
+  m.push().T(x, y, z).RY(rot); m.c(c);
+  for (const sx of [-1, 1]) { m.tube([[sx * 0.26, 0, 0.26], [sx * 0.27, 0.3, 0.22], [sx * 0.26, 0.48, 0.2]], 0.03, 6); m.tube([[sx * 0.24, 0, -0.28], [sx * 0.22, 0.5, -0.2], [sx * 0.2, 1.02, -0.3]], 0.03, 6); m.tube([[sx * 0.26, 0.48, 0.2], [sx * 0.31, 0.72, 0.22], [sx * 0.3, 0.74, 0.0], [sx * 0.22, 0.7, -0.22]], 0.026, 6); }
+  m.tube([[-0.2, 1.02, -0.3], [0, 1.1, -0.34], [0.2, 1.02, -0.3]], 0.03, 6); m.tube([[-0.21, 0.62, -0.22], [0, 0.64, -0.27], [0.21, 0.62, -0.22]], 0.022, 5);
+  for (const sx of [-0.1, 0, 0.1]) m.tube([[sx, 0.64, -0.26], [sx * 1.1, 1.05, -0.33]], 0.016, 4);
+  m.c(sc); m.ell(0, 0.49, 0, 0.28, 0.06, 0.27, 10, 5); m.c(c); m.box(0, 0.4, 0, 0.56, 0.05, 0.5, 63);
+  if (o.candle) { m.c('#f1ead6'); m.cyl(0.08, 0.55, 0.02, 0.022, 0.022, 0.16, 6, 1); m.c('#ffd972', 1); m.ell(0.08, 0.74, 0.02, 0.018, 0.035, 0.018, 5, 4); m.c('#e6c256'); m.cyl(0.08, 0.54, 0.02, 0.06, 0.05, 0.02, 8, 1); m.c('#e2b23c'); m.box(-0.08, 0.55, 0.0, 0.16, 0.03, 0.22, 63); m.c('#d98a8a'); m.box(-0.07, 0.58, 0.02, 0.15, 0.03, 0.2, 63); ctx.lamps.push({ x, y: y + 0.8, z, r: 5, col: [1, 0.75, 0.35], k: 0.6 }); ctx.glows.push({ x, y: y + 0.76, z, s: 0.5, col: [1, 0.8, 0.4] }); }
+  m.pop();
+  if (!o.noSeat) ctx.seats.push({ x, z, y: y + 0.53 - 0.49, rot, tag: o.tag });
+  addCircle(ctx, x, z, 0.36);
+}
+function barrel(ctx, x, z, s) { const m = ctx.m, y = ctx.H(x, z); s = s || 1; m.c(jit(hex('#8a5a32'), ctx.rng, 0.02, 0.04)); m.lathe(x, y, z, [[0.3 * s, 0], [0.38 * s, 0.25 * s], [0.4 * s, 0.5 * s], [0.38 * s, 0.75 * s], [0.3 * s, 1.0 * s]], 10); m.c('#5a3a22'); m.disc(x, y + 1.0 * s, z, 0.3 * s, 10); m.c('#3a3a42'); for (const t of [0.2, 0.8]) m.cyl(x, y + t * s - 0.02, z, 0.385 * s - Math.abs(t - 0.5) * 0.07 * s, 0.385 * s - Math.abs(t - 0.5) * 0.07 * s, 0.04, 10, 0); addCircle(ctx, x, z, 0.42 * s); }
+function crate(ctx, x, z, s, rot) { const m = ctx.m, y = ctx.H(x, z); s = s || 0.6; m.push().T(x, y, z).RY(rot || 0); m.c(jit(hex('#b98a4a'), ctx.rng, 0.02, 0.05)); m.box(0, 0, 0, s, s * 0.7, s, 63); m.c('#8a6234'); for (const q of [-1, 1]) { m.box(q * s * 0.5, 0, 0, 0.03, s * 0.7, s + 0.02, 61); m.box(0, 0, q * s * 0.5, s + 0.02, s * 0.7, 0.03, 61); } m.pop(); addCircle(ctx, x, z, s * 0.6); }
+function pot(ctx, x, z, kind, o) {
+  const m = ctx.m, rng = ctx.rng, y = (o && o.y !== undefined) ? o.y : ctx.H(x, z), s = (o && o.s) || 1;
+  m.c(jit(hex((o && o.col) || '#c9703a'), rng, 0.02, 0.04)); m.lathe(x, y, z, [[0.16 * s, 0], [0.24 * s, 0.3 * s], [0.26 * s, 0.34 * s], [0.22 * s, 0.34 * s]], 8);
+  if (kind === 'bush') { m.sway(y + 0.3, 0.8, 0.2); for (let i = 0; i < 3; i++) { m.c(jit(hex(rng.pick(['#4f8a4a', '#6aa84f', '#3d7a4a'])), rng, 0.02, 0.05)); m.ell(x + rng.s() * 0.1, y + 0.5 * s + i * 0.12, z + rng.s() * 0.1, 0.24 * s, 0.22 * s, 0.24 * s, 6, 4); } m.sway(0); }
+  else if (kind === 'sun') for (let i = 0; i < 3; i++) sunflower(ctx, x + rng.s() * 0.1, z + rng.s() * 0.1, { y: y + 0.3 * s, h: 0.5 + rng() * 0.5, R: 0.11 });
+  else if (kind === 'iris') for (let i = 0; i < 4; i++) iris(ctx, x + rng.s() * 0.1, z + rng.s() * 0.1, { y: y + 0.3 * s });
+  else for (let i = 0; i < 5; i++) poppy(ctx, x + rng.s() * 0.12, z + rng.s() * 0.12, { y: y + 0.3 * s, col: kind });
+  addCircle(ctx, x, z, 0.26 * s);
+}
+function stall(ctx, x, z, rot, col) { // a market stall heaped with fruit
+  const m = ctx.m, rng = ctx.rng, y = ctx.H(x, z);
+  m.push().T(x, y, z).RY(rot);
+  m.c('#a8824e'); m.box(0, 0.75, 0, 2.6, 0.08, 1.2, 63); m.c('#7a5630'); for (const sx of [-1.2, 1.2]) for (const sz of [-0.5, 0.5]) m.box(sx, 0, sz, 0.08, sz < 0 ? 2.3 : 0.75, 0.08, 61);
+  m.ds = true; for (let i = 0; i < 6; i++) { m.c(i % 2 ? col : '#f6ead6'); const x0 = -1.5 + i * 0.5; m.quad([x0, 1.95, 0.95], [x0 + 0.5, 1.95, 0.95], [x0 + 0.5, 2.35, -0.6], [x0, 2.35, -0.6]); } m.ds = false;
+  for (let b = 0; b < 4; b++) { const bx = -0.95 + b * 0.63; m.c('#c9a45a'); m.lathe(bx, 0.83, 0, [[0.2, 0], [0.26, 0.14]], 8); const fc = ['#e2412f', '#f0a23a', '#f6e27a', '#7fae4a'][b]; for (let i = 0; i < 7; i++) { m.c(jit(hex(fc), rng, 0.02, 0.05)); m.ell(bx + rng.s() * 0.13, 0.95 + rng() * 0.08, rng.s() * 0.13, 0.065, 0.065, 0.065, 6, 4); } }
+  m.pop(); addBox(ctx, x, z, 2.7, 1.3, rot, 2.3, true);
+}
+function handcart(ctx, x, z, rot) { const m = ctx.m, y = ctx.H(x, z); m.push().T(x, y, z).RY(rot); m.c('#e3b93c'); m.box(0, 0.6, 0, 1.1, 0.07, 1.8, 63); m.c('#c79a2e'); for (const s of [-1, 1]) m.box(s * 0.55, 0.6, 0, 0.05, 0.4, 1.8, 63); m.box(0, 0.6, -0.9, 1.1, 0.4, 0.05, 63); m.c('#c2452f'); for (const s of [-1, 1]) { const ring = []; for (let i = 0; i <= 14; i++) { const a = i / 14 * TAU; ring.push([s * 0.66, 0.55 + Math.sin(a) * 0.55, Math.cos(a) * 0.55]); } m.tube(ring, 0.035, 5); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI; m.tube([[s * 0.66, 0.55 - Math.sin(a) * 0.52, -Math.cos(a) * 0.52], [s * 0.66, 0.55 + Math.sin(a) * 0.52, Math.cos(a) * 0.52]], 0.016, 4); } } m.c('#7a5630'); for (const s of [-1, 1]) m.tube([[s * 0.45, 0.62, 0.9], [s * 0.45, 0.5, 2.0]], 0.03, 5); m.pop(); addBox(ctx, x, z, 1.5, 2.0, rot, 1.1, true); }
+/* a framed picture hanging on a wall; its canvas is filled with the real painting when the app can fetch it */
+function picture(ctx, x, y, z, rot, w, h, art) {
+  const m = ctx.m, T = 0.16, g = '#d9a93a', g2 = '#f2cf62';
+  m.push().T(x, y, z).RY(rot);
+  m.c(g, 0.1); m.box(-(w / 2 + T / 2), -T, 0.05, T, h + T * 2, 0.14, 63); m.box(w / 2 + T / 2, -T, 0.05, T, h + T * 2, 0.14, 63); m.box(0, h, 0.05, w + T * 2, T, 0.14, 63); m.box(0, -T, 0.05, w + T * 2, T, 0.14, 63);
+  m.c(g2, 0.18); m.box(-(w / 2 + T * 0.5), -T * 0.6, 0.09, T * 0.4, h + T * 1.2, 0.1, 63); m.box(w / 2 + T * 0.5, -T * 0.6, 0.09, T * 0.4, h + T * 1.2, 0.1, 63); m.box(0, h + T * 0.3, 0.09, w + T * 1.2, T * 0.4, 0.1, 63); m.box(0, -T * 0.7, 0.09, w + T * 1.2, T * 0.4, 0.1, 63);
+  for (const sx of [-1, 1]) for (const sy of [0, 1]) m.ell(sx * (w / 2 + T / 2), sy * (h + T) - T / 2, 0.1, 0.16, 0.16, 0.09, 6, 4);
+  m.c('#efe6cc'); m.box(0, -0.62, 0.03, 0.9, 0.24, 0.04, 63);
+  m.pop();
+  const c = Math.cos(rot), s = Math.sin(rot), P = (lx, ly) => [x + lx * c + 0.06 * s, y + ly, z - lx * s + 0.06 * c];
+  const a = P(-w / 2, 0), b = P(w / 2, 0), cc = P(w / 2, h), dd = P(-w / 2, h);
+  ctx.picq.push(a[0], a[1], a[2], 0, 0, b[0], b[1], b[2], 1, 0, cc[0], cc[1], cc[2], 1, 1, dd[0], dd[1], dd[2], 0, 1);
+  ctx.pics.push({ art, c: ART[art].c.map(hex), tex: null });
+  ctx.spots.push({ art, x: x + s * 2.2, z: z + c * 2.2, r: 3.4 });
+  ctx.lamps.push({ x: x + s * 1.2, y: y + h + 0.8, z: z + c * 1.2, r: 6, col: [1, 0.88, 0.6], k: 0.8 });
 }
 function bench(ctx, x, z, rot, o) {
   const m = ctx.m, y = ctx.H(x, z), c = hex((o && o.col) || '#3f6a5a');
@@ -359,7 +430,8 @@ const PORTALS = {
   munch: { pid: 3, c: ['#e8762a', '#f2c23a', '#33507a', '#4a3a36'] },
   seurat: { pid: 4, c: ['#7fae5a', '#5f8fc0', '#cfe0ea', '#d9643a'] },
   jiangshan: { pid: 5, c: ['#2f8a7a', '#2a5fa0', '#c9a45a', '#e6d7ae'] },
-  vermeer: { pid: 6, c: ['#2a2a26', '#3f6fb5', '#b88c3c', '#e9dcc0'] },
+  museum: { pid: 6, c: ['#2a2a26', '#3f6fb5', '#b88c3c', '#e9dcc0'] },
+  fog: { pid: 7, c: ['#aab6c6', '#eef0ee', '#22382e', '#5a6a80'] },
 };
 
 /* ---------- baking: lamp light and sun shadow per vertex ---------- */

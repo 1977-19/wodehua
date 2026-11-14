@@ -54,7 +54,7 @@ function buildChar(sp) {
   if (sp.trim) { col(sp.trim, 0); m.push().T(0, 0, 0.004); m.lathe(0, 0, 0, [[0.132 * W, 1.0], [0.137 * W, 1.07], [0.158 * W, 1.19]], 4, kz, 0.16); m.pop(); for (const s of [1, -1]) m.ell(0.07 * s * W, 1.13, 0.098 * W, 0.035, 0.05, 0.012, 8, 4); }
   if (sp.bag) { col(sp.bag); m.push().T(-0.19 * W, 0.92, 0.02); m.box(0, -0.11, 0, 0.07, 0.2, 0.22, 63); m.pop(); m.push().T(0, 1.14, 0).RZ(0.62); m.lathe(0, 0, 0, [[0.172 * W, -0.012], [0.172 * W, 0.012]], 12, 0.72); m.pop(); }
   /* arms */
-  for (const s of [1, -1]) {
+  for (const s of (sp.noArms ? [] : [1, -1])) {
     const x = SX * s;
     bone(s > 0 ? B.uaL : B.uaR); col(sleeve); m.ell(x, 1.275, 0, 0.061, 0.061, 0.061, 8, 5); m.cyl(x, 1.04, 0, 0.044, 0.055, 0.235, 8, 0);
     bone(s > 0 ? B.faL : B.faR); m.ell(x, 1.04, 0, 0.046, 0.046, 0.046, 8, 5);
@@ -216,7 +216,7 @@ class Actor {
     const pf = POSE[this.pose]; if (pf) pf(P, tt, w, this);
     if (this.hasProp) { if (this.hasProp > 0) { P.uaL = P.uaL * 0.2 + (this.propUp || 0.5); P.faL = this.propBend || 1.45; } else { P.uaR = P.uaR * 0.2 + (this.propUp || 0.5); P.faR = this.propBend || 1.45; } }
     const sc = this.scale, m = _bm, sx = this.sx;
-    M4.trans(_mdl, this.x, this.y, this.z); M4.rotY(_mdl, this.rot); M4.scale(_mdl, sc, sc, sc);
+    M4.trans(_mdl, this.x, this.y + (this.yadd || 0), this.z); M4.rotY(_mdl, this.rot); if (this.roll) M4.rotZ(_mdl, this.roll); if (this.zoff) M4.translate(_mdl, 0, 0, this.zoff); M4.scale(_mdl, sc, sc, sc);
     M4.copy(_tmp, _mdl); M4.translate(_tmp, 0, P.hipY, 0);
     _bone(m[B.hips], _tmp, 0, 0.86, 0, P.lean * 0.4, -P.twist * 0.6, P.roll);
     _bone(m[B.chest], m[B.hips], 0, 0.98, 0, P.lean + P.chX, P.twist * 1.6, -P.roll * 0.6);
@@ -251,6 +251,9 @@ POSE.fold = (P, t) => { P.uaL = P.uaL * 0.3 + 0.25; P.uaR = P.uaR * 0.3 + 0.25; 
 POSE.guard = (P, t) => { P.ozL = 0.25; P.faL = 1.9; P.uaL = P.uaL * 0.3 - 0.2; P.rotArmL = 0.6; };
 POSE.wash = (P, t) => { P.lean = 0.75; P.hipY = -0.3; P.thL = 1.25; P.thR = 1.25; P.knL = 1.9; P.knR = 1.9; P.uaL = 1.2 + Math.sin(t * 3) * 0.2; P.uaR = 1.2 - Math.sin(t * 3) * 0.2; P.faL = P.faR = 0.5; P.headX += -0.4; };
 POSE.pour = (P, t) => { P.uaR = 0.75; P.faR = 0.9 + Math.sin(t * 0.7) * 0.05; P.uaL = 0.55; P.faL = 0.9; P.headX += 0.22; P.lean += 0.05; };
+POSE.ride = (P, t, w, a) => { const ph = a.phase, s = Math.sin(ph), c = Math.cos(ph); P.hipY = 0.07; P.lean = 0.34; P.twist = 0; P.roll = 0; P.thL = 0.98 + 0.36 * s; P.thR = 0.98 - 0.36 * s; P.knL = 1.5 - 0.42 * c; P.knR = 1.5 + 0.42 * c; P.uaL = P.uaR = 1.02; P.faL = P.faR = 0.3; P.ozL = P.ozR = 0.12; P.headX = -0.26; P.headY = (a.steer || 0) * 0.5; P.skirt = 0; P.chX = 0; };
+POSE.pillion = (P, t) => { P.hipY = -0.02; P.thL = 1.35; P.thR = 1.45; P.knL = 1.25; P.knR = 1.35; P.uaL = 0.5; P.faL = 0.9; P.uaR = 0.45; P.faR = 0.8; P.lean = -0.03; P.skirt = 0; };
+POSE.statue = (P, t, w, a) => { const k = a.def && a.def.statue; P.chX = 0; P.headX = 0; P.headY = 0; P.ozL = 0.07; P.ozR = 0.07; if (k === 'david') { P.roll = 0.05; P.headY = 0.75; P.uaL = 0.35; P.faL = 2.2; P.rotArmL = -0.2; P.uaR = 0.02; P.faR = 0.12; P.thR = 0.12; P.knR = 0.2; P.twist = -0.08; } else if (k === 'venus') { P.roll = -0.06; P.twist = 0.12; P.headY = -0.3; P.thL = 0.14; P.knL = 0.25; } else if (k === 'thinker') { POSE.sit(P, 0); P.hipY = -0.37; P.lean = 0.5; P.uaR = 0.95; P.faR = 2.25; P.rotArmR = 0.55; P.uaL = 0.75; P.faL = 0.9; P.rotArmL = -0.3; P.headX = 0.2; } };
 POSE.fish = (P, t) => { P.uaR = 0.9; P.faR = 0.6; P.uaL = 0.7; P.faL = 0.9; P.lean += 0.08; };
 
 /* ---------- cast ---------- */
@@ -285,3 +288,54 @@ const CAST = {
   pearl: { skin: '#f6dcc4', hair: '#5a4a32', hairStyle: 'bald', top: '#b88c3c', style: 'dress', skirt: '#a67c34', collar: '#f3efe2', shoes: '#4a3a2a', hat: { type: 'turban', col: '#4a7ac0', band: '#e2bb4e' }, earring: '#f6f3ea', face: { eye: '#4a4a3a', blush: 0.4, mouth: '#c9453f', open: 1 } },
   milkmaid: { w: 1.1, skin: '#f2d0aa', hair: '#6a4a2a', hairStyle: 'bald', top: '#e3c04a', style: 'dress', skirt: '#b5422f', apron: '#3f62a8', sleeve: '#3f7a5a', cuff: '#3f62a8', shoes: '#3a2a22', hat: { type: 'coif', col: '#f4f1e6' }, face: { eye: '#3a3a36', blush: 0.5 }, props: [{ type: 'jug' }] },
 };
+
+/* a town bicycle with a basket of sunflowers. bones: 0 frame, 1 fork+bars, 2 front wheel, 3 rear wheel, 4 cranks */
+function buildBike(col) {
+  const m = new Mesh(6000), c1 = hex(col || '#c2452f'), dark = hex('#22242e'), cream = hex('#efe6cc'), R = 0.34;
+  const bone = b => { m.sw = b; }, C = (c, o) => m.c(c, o === undefined ? 1 : o);
+  const wheel = (z) => {
+    const ring = []; for (let i = 0; i <= 20; i++) { const a = i / 20 * TAU; ring.push([0, 0.34 + Math.sin(a) * R, z + Math.cos(a) * R]); }
+    C(dark); m.tube(ring, 0.03, 6); const rim = ring.map(p => [0, 0.34 + (p[1] - 0.34) * 0.9, z + (p[2] - z) * 0.9]); C(cream, 0); m.tube(rim, 0.014, 4);
+    C('#c9c9d2', 0); for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; m.tube([[0.02 * (i % 2 ? 1 : -1), 0.34, z], [0, 0.34 + Math.sin(a) * R * 0.88, z + Math.cos(a) * R * 0.88]], 0.005, 3); }
+    C(dark); m.push().T(0, 0.34, z).RZ(Math.PI / 2); m.cyl(0, -0.05, 0, 0.03, 0.03, 0.1, 6, 3); m.pop();
+  };
+  const RZ0 = -0.52, FZ0 = 0.58, bb = [0, 0.3, -0.04], seat = [0, 0.86, -0.3], head = [0, 0.92, 0.34], headLo = [0, 0.74, 0.4];
+  bone(3); wheel(RZ0); bone(2); wheel(FZ0);
+  bone(0); C(c1);
+  m.tube([bb, seat], 0.022, 6); m.tube([seat, [0, 0.9, 0.0], head], 0.02, 6); m.tube([headLo, [0, 0.52, 0.16], bb], 0.024, 6); m.tube([head, headLo], 0.026, 6);
+  for (const s of [-1, 1]) { m.tube([bb, [0.05 * s, 0.33, -0.3], [0.05 * s, 0.34, RZ0]], 0.013, 4); m.tube([[0, 0.8, -0.3], [0.05 * s, 0.56, -0.42], [0.05 * s, 0.34, RZ0]], 0.012, 4); }
+  C('#5a3a26'); m.ell(0, 0.905, -0.32, 0.085, 0.035, 0.14, 8, 5); C(dark); m.cyl(0, 0.84, -0.3, 0.014, 0.014, 0.06, 5, 0);
+  C(mulc(c1, 0.8)); const fen = []; for (let i = 0; i <= 8; i++) { const a = -0.5 + i / 8 * 2.6; fen.push([0, 0.34 + Math.sin(a) * (R + 0.045), RZ0 + Math.cos(a) * (R + 0.045)]); } m.tube(fen, 0.018, 4);
+  C('#8a6a3a'); m.box(0, 0.74, -0.62, 0.2, 0.02, 0.34, 63); for (const s of [-1, 1]) m.tube([[0.09 * s, 0.74, -0.74], [0.05 * s, 0.34, RZ0]], 0.008, 3);
+  C(dark); m.tube([[0, 0.3, RZ0 + 0.02], [0, 0.3, -0.04]], 0.008, 3);
+  bone(4); C('#c9c9d2', 0); m.push().T(0, 0.3, -0.04).RZ(Math.PI / 2); m.cyl(0, -0.012, 0, 0.085, 0.085, 0.024, 10, 3); m.pop();
+  C(dark); for (const s of [-1, 1]) { m.tube([[0.03 * s, 0.3, -0.04], [0.07 * s, 0.3 - 0.17 * s, -0.04]], 0.012, 4); m.box(0.12 * s, 0.3 - 0.17 * s - 0.012, -0.04, 0.1, 0.024, 0.07, 63); }
+  bone(1); C(c1); for (const s of [-1, 1]) m.tube([headLo, [0.055 * s, 0.6, 0.48], [0.055 * s, 0.34, FZ0]], 0.014, 4);
+  m.tube([head, [0, 1.02, 0.3]], 0.016, 5); C('#c9c9d2'); m.tube([[-0.27, 1.0, 0.2], [-0.2, 1.03, 0.3], [0, 1.03, 0.31], [0.2, 1.03, 0.3], [0.27, 1.0, 0.2]], 0.013, 5);
+  C('#5a3a26'); for (const s of [-1, 1]) m.tube([[0.27 * s, 1.0, 0.2], [0.29 * s, 0.99, 0.12]], 0.02, 5, true);
+  C(mulc(c1, 0.8)); const ff = []; for (let i = 0; i <= 6; i++) { const a = 0.5 + i / 6 * 1.9; ff.push([0, 0.34 + Math.sin(a) * (R + 0.045), FZ0 + Math.cos(a) * (R + 0.045)]); } m.tube(ff, 0.018, 4);
+  C('#c9a45a'); m.lathe(0, 0.74, 0.62, [[0.12, 0], [0.16, 0.1], [0.17, 0.2]], 8, 0.75); m.c(mulc(hex('#c9a45a'), 0.75), 1); m.disc(0, 0.75, 0.62, 0.12, 8, 0.09);
+  C('#ffe07a', 1); m.ell(0, 0.72, 0.5, 0.035, 0.035, 0.02, 6, 4);
+  const rng = RNG(5); for (let i = 0; i < 4; i++) { const fx = rng.s() * 0.08, fz = 0.62 + rng.s() * 0.06, fy = 1.0 + rng() * 0.12; C('#5f8f3a', 0); m.tube([[fx * 0.5, 0.8, fz], [fx, fy, fz]], 0.008, 3); m.push().T(fx, fy, fz).RX(0.9).RZ(rng.s() * 0.5); C('#f4c62e', 0); m.cyl(0, 0, 0, 0.075, 0.07, 0.012, 9, 1); C('#7a4a22', 0); m.cyl(0, 0.012, 0, 0.035, 0.03, 0.012, 7, 1); m.pop(); }
+  const pk = m.pack(), bbs = new Uint8Array(pk.nv * 4); for (let i = 0; i < pk.nv; i++) bbs[i * 4] = Math.round(pk.bone[i]); pk.boneB = bbs; return pk;
+}
+const _bk = []; for (let i = 0; i < 6; i++) _bk.push(M4.create());
+function bikeBones(out, x, y, z, rot, roll, steer, spin, crank) {
+  const M = _bk[5]; M4.trans(M, x, y, z); M4.rotY(M, rot); if (roll) M4.rotZ(M, roll);
+  M4.copy(_bk[0], M);
+  M4.copy(_bk[1], M); M4.translate(_bk[1], 0, 0.83, 0.37); M4.rotY(_bk[1], steer); M4.translate(_bk[1], 0, -0.83, -0.37);
+  M4.copy(_bk[2], _bk[1]); M4.translate(_bk[2], 0, 0.34, 0.58); M4.rotX(_bk[2], spin); M4.translate(_bk[2], 0, -0.34, -0.58);
+  M4.copy(_bk[3], M); M4.translate(_bk[3], 0, 0.34, -0.52); M4.rotX(_bk[3], spin); M4.translate(_bk[3], 0, -0.34, 0.52);
+  M4.copy(_bk[4], M); M4.translate(_bk[4], 0, 0.3, -0.04); M4.rotX(_bk[4], crank); M4.translate(_bk[4], 0, -0.3, 0.04);
+  for (let i = 0; i < 5; i++) out.set(_bk[i], i * 16);
+}
+const MARBLE = { skin: '#eeeae0', hair: '#e6e2d6', top: '#eeeae0', sleeve: '#eeeae0', legs: '#eeeae0', socks: '#eeeae0', shoes: '#e6e2d6', hipCol: '#eeeae0', face: { eye: '#dcd8cc', blush: 0, mouth: '#d6d2c6' }, brow: '#d6d2c6', marble: 1 };
+Object.assign(CAST, {
+  david: Object.assign({}, MARBLE, { hairStyle: 'curly', style: 'jacket', w: 1.08 }),
+  venus: Object.assign({}, MARBLE, { hairStyle: 'chignon', style: 'dress', skirt: '#e9e5da', skirtR: 0.27, skirtLen: 0.04, noArms: 1 }),
+  thinker: Object.assign({}, MARBLE, { skin: '#5a6a5a', hair: '#4a5a4c', top: '#5a6a5a', sleeve: '#5a6a5a', legs: '#5a6a5a', socks: '#5a6a5a', shoes: '#4a5a4c', hipCol: '#5a6a5a', hairStyle: 'short', w: 1.15, face: { eye: '#4a5a4c', blush: 0, mouth: '#4a5a4c' }, brow: '#3f4f42' }),
+  mona: { skin: '#f0d6a8', hair: '#3a2a1e', hairStyle: 'long', top: '#2f3a2a', style: 'dress', skirt: '#27301f', sleeve: '#a8823a', collar: '#3a2a1e', shoes: '#1c1a16', hat: null, face: { eye: '#4a3a22', blush: 0.25, mouth: '#b8605a' }, brow: '#e6c89a' },
+  wanderer: { skin: '#f0d0b0', hair: '#c9823a', hairStyle: 'curly', top: '#22382e', style: 'coat', legs: '#1f3028', shoes: '#22202a', collar: '#e9e2cf', face: { eye: '#3a4a5a' }, props: [{ type: 'cane', col: '#5a4030' }] },
+  visitorA: { skin: '#f4d6b6', hair: '#2a2228', hairStyle: 'bob', top: '#3f6fb0', style: 'jacket', legs: '#e9e2cc', shoes: '#b5422f', bag: '#c9a45a', face: { eye: '#3a3a56', blush: 0.5 } },
+  visitorB: { skin: '#e2b88c', hair: '#1c1a20', hairStyle: 'short', top: '#e9dfc0', style: 'coat', legs: '#4a5f8c', shoes: '#3a2a22', scarf: '#c2452f', face: { eye: '#2a2a36' } },
+});

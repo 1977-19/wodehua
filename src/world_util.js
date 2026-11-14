@@ -99,6 +99,7 @@ function finishWorld(R, ctx, def) {
   if (ctx.d.nv) { const dk = ctx.d.pack(); bake(ctx, dk, null, 0); chunkMesh(dk, 14); world.detail = R.upload(dk); world.tris += dk.ni / 3; }
   if (ctx.w.nv) world.water = R.upload(ctx.w.pack());
   if (ctx.pq.length) world.portalMesh = R.uploadPortal(new Float32Array(ctx.pq));
+  if (ctx.picq.length) { world.picMesh = R.uploadPics(new Float32Array(ctx.picq)); world.pics = ctx.pics; }
   Object.assign(world, { H: ctx.H, boxes: ctx.boxes, circles: ctx.circles, lamps: ctx.lamps, glows: ctx.glows, spots: ctx.spots, npcs: ctx.npcs, portals: ctx.portals, seats: ctx.seats, decks: ctx.decks || [], birds: ctx.birds, petals: ctx.petals,
     refl: ctx.lamps.filter(l => l.refl), bound: def.bound, spawn: def.spawn, env: def.env, defTod: def.defTod, detailDist: def.detailDist || 75, waterY: def.waterY === undefined ? -0.55 : def.waterY, extra: def.extra || {} });
   // collider grid
