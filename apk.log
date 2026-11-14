@@ -1,0 +1,9 @@
+build-tools /usr/local/lib/android/sdk/build-tools/37.0.0  platform /usr/local/lib/android/sdk/platforms/android-34
+warning: [options] system modules path not set in conjunction with -source 11
+Note: android/src/com/huazhong/manbu/MainActivity.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1 warning
+-rw-r--r-- 1 runner runner 193085 Nov 14 14:00 out/HuaZhongManBu.apk
+APK OK 0df88bf41d9f5e77cb5da6622f4670086e11e113
+APK RELEASED
+sha 0df88bf41d9f5e77cb5da6622f4670086e11e113  status success
