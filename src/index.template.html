@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#101b52">
+<title>画中漫步</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* one visual world: the night of June 1889. layout: full-bleed canvas, HUD pinned to the safe-area corners */
+  --night: #0f1a50; --ink: #17214f; --cream: #f4ecd4; --gold: #e6c256; --gold-deep: #a87d24; --vermilion: #c2452f; --mist: rgba(244, 236, 212, 0.72);
+  --display: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --glass: rgba(15, 26, 80, 0.58);
+  --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px); --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; background: var(--night); color: var(--cream); font-family: var(--display); overflow: hidden; overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+[hidden] { display: none !important; }
+#app { position: fixed; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+#app.rot { --sl: env(safe-area-inset-top, 0px); --st: env(safe-area-inset-right, 0px); --sr: env(safe-area-inset-bottom, 0px); --sb: env(safe-area-inset-left, 0px); }
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#vig { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 46%, transparent 58%, rgba(8, 12, 40, 0.34) 100%); }
+
+/* HUD */
+#hud { position: fixed; inset: 0; pointer-events: none; transition: opacity .5s; }
+#hud.off { opacity: 0; }
+#hud.off * { pointer-events: none !important; }
+#loc { position: absolute; left: calc(16px + var(--sl)); top: calc(14px + var(--st)); display: flex; flex-direction: column; gap: 2px; text-shadow: 0 1px 10px rgba(8, 12, 40, .7); }
+#locN { font-size: 21px; font-weight: 900; letter-spacing: .14em; }
+#locS { font-size: 12px; letter-spacing: .12em; color: var(--mist); }
+#tools { position: absolute; right: calc(14px + var(--sr)); top: calc(12px + var(--st)); display: flex; flex-direction: row; gap: 10px; pointer-events: auto; }
+.rb { width: 44px; height: 44px; border-radius: 50%; background: var(--glass); border: 1px solid rgba(230, 194, 86, .45); display: grid; place-items: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: transform .15s, background .2s; }
+.rb:active { transform: scale(.92); background: rgba(230, 194, 86, .3); }
+.rb svg { width: 21px; height: 21px; stroke: var(--cream); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#bTod .i1, #bTod .i2 { display: none; }
+#bTod[data-t="0"] .i0, #bTod[data-t="1"] .i1, #bTod[data-t="2"] .i2 { display: block; }
+#bTod[data-t="1"] .i0, #bTod[data-t="2"] .i0 { display: none; }
+#fps { position: absolute; left: calc(16px + var(--sl)); top: calc(62px + var(--st)); font: 11px/1.2 ui-monospace, Menlo, monospace; color: var(--gold); letter-spacing: .04em; font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px #000; }
+#acts { position: absolute; right: calc(18px + var(--sr)); bottom: calc(34px + var(--sb)); display: flex; flex-direction: column; align-items: flex-end; gap: 12px; pointer-events: auto; }
+.ab { min-height: 48px; padding: 0 20px 0 16px; border-radius: 26px; background: var(--glass); border: 1px solid rgba(230, 194, 86, .7); display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; letter-spacing: .1em; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 6px 22px rgba(8, 12, 40, .35); animation: pop .28s ease-out; }
+.ab:active { transform: scale(.95); }
+.ab i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 4px rgba(230, 194, 86, .25); }
+#a2 i { background: var(--vermilion); box-shadow: 0 0 0 4px rgba(194, 69, 47, .3); }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+#stick { position: absolute; width: 128px; height: 128px; margin: -64px 0 0 -64px; border-radius: 50%; border: 1px solid rgba(244, 236, 212, .35); background: radial-gradient(circle, rgba(244, 236, 212, .08), rgba(15, 26, 80, .22)); opacity: 0; transition: opacity .2s; }
+#stick.on { opacity: 1; }
+#nub { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(244, 236, 212, .82); box-shadow: 0 0 0 5px rgba(230, 194, 86, .3); transform: translate(-50%, -50%); }
+#toast { position: absolute; left: 50%; top: calc(14px + var(--st)); transform: translate(-50%, -12px); width: max-content; max-width: 46%; padding: 12px 20px 13px; text-align: center; background: rgba(244, 236, 212, .95); color: var(--ink); border-radius: 3px; box-shadow: 0 0 0 1px var(--gold-deep), 0 0 0 5px rgba(244, 236, 212, .28), 0 14px 34px rgba(8, 12, 40, .4); opacity: 0; transition: opacity .45s, transform .45s; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+#toastTag { font-size: 11px; letter-spacing: .34em; color: var(--vermilion); margin-bottom: 4px; }
+#toastT { font-size: 18px; font-weight: 900; letter-spacing: .08em; text-wrap: balance; }
+#toastS { font-size: 12.5px; letter-spacing: .06em; margin-top: 4px; opacity: .78; line-height: 1.6; text-wrap: balance; }
+
+/* caption in painter's view, gilded frame in photo mode */
+#caption { position: fixed; left: calc(22px + var(--sl)); bottom: calc(30px + var(--sb)); pointer-events: none; opacity: 0; transform: translateY(8px); transition: opacity .8s .5s, transform .8s .5s; text-shadow: 0 1px 12px rgba(8, 12, 40, .85); }
+#caption.on { opacity: 1; transform: none; }
+#capT { font-size: 24px; font-weight: 900; letter-spacing: .08em; margin-left: -.5em; }
+#capS { font-size: 13px; letter-spacing: .14em; margin-top: 6px; color: var(--mist); }
+#capH { font-size: 11px; letter-spacing: .2em; margin-top: 14px; color: var(--gold); }
+#photo { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; }
+#photo.on { opacity: 1; }
+#photo .fr { position: absolute; inset: calc(10px + var(--st)) calc(10px + var(--sr)) calc(10px + var(--sb)) calc(10px + var(--sl)); border: 16px solid #c99a34; border-image: linear-gradient(135deg, #f3d77a, #a87d24 30%, #f0cf66 52%, #8a6219 76%, #e6c256) 1; box-shadow: inset 0 0 0 2px #6a4a12, inset 0 0 0 7px rgba(244, 236, 212, .16), inset 0 0 60px rgba(8, 12, 40, .5), 0 0 0 40px #0b1238; }
+#plate { position: absolute; left: 50%; bottom: calc(40px + var(--sb)); transform: translateX(-50%); padding: 9px 22px 10px; background: linear-gradient(180deg, #f3d77a, #c99a34); color: #3a2a0a; text-align: center; border-radius: 2px; box-shadow: 0 0 0 1px #6a4a12, 0 6px 18px rgba(0, 0, 0, .4); width: max-content; max-width: 78vw; }
+#plate b { display: block; font-size: 15px; letter-spacing: .12em; }
+#plate span { font-size: 11px; letter-spacing: .2em; opacity: .8; }
+
+/* panels */
+.scrim { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; background: rgba(8, 12, 40, 0); pointer-events: none; transition: background .35s; z-index: 5; }
+.scrim.on { background: rgba(8, 12, 40, .46); pointer-events: auto; }
+.sheet { width: min(100%, 560px); max-height: 92%; overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; background: var(--cream); color: var(--ink); border-radius: 18px 18px 0 0; padding: 22px 22px calc(24px + var(--sb)); transform: translateY(104%); transition: transform .4s cubic-bezier(.2, .8, .2, 1); box-shadow: 0 -1px 0 var(--gold-deep), 0 -10px 40px rgba(8, 12, 40, .4); }
+.scrim.on .sheet { transform: none; }
+.sheet h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: .1em; text-wrap: balance; }
+.sheet .sub { font-size: 12.5px; letter-spacing: .1em; color: var(--vermilion); margin-top: 6px; }
+.sheet p { font-size: 15px; line-height: 1.85; margin: 14px 0 0; text-align: justify; }
+.row { display: flex; gap: 10px; margin-top: 20px; }
+.btn { flex: 1; min-height: 46px; border-radius: 24px; border: 1px solid var(--ink); font-size: 15px; font-weight: 600; letter-spacing: .12em; color: var(--ink); }
+.btn.pri { background: var(--ink); color: var(--cream); }
+.btn:active { transform: scale(.97); }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.x { font-size: 13px; letter-spacing: .14em; color: var(--ink); opacity: .7; padding: 8px 0 8px 12px; }
+.sheet h3 { font-size: 12px; letter-spacing: .3em; color: var(--vermilion); margin: 22px 0 10px; font-weight: 600; }
+.seg { display: flex; border: 1px solid var(--ink); border-radius: 22px; overflow: hidden; }
+.seg button { flex: 1; min-height: 42px; font-size: 14px; letter-spacing: .08em; color: var(--ink); border-right: 1px solid rgba(23, 33, 79, .25); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--ink); color: var(--cream); }
+.togs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.tog { min-height: 42px; border-radius: 22px; border: 1px solid var(--ink); font-size: 14px; letter-spacing: .06em; color: var(--ink); }
+.tog.on { background: var(--ink); color: var(--cream); }
+#sGo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.go { text-align: left; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(23, 33, 79, .35); display: flex; flex-direction: column; gap: 3px; color: var(--ink); }
+.go b { font-size: 15px; letter-spacing: .08em; } .go span { font-size: 11px; opacity: .7; letter-spacing: .04em; }
+.go.here { border-color: var(--vermilion); box-shadow: inset 0 0 0 1px var(--vermilion); }
+#sDismiss { margin-top: 18px; width: 100%; }
+.note { font-size: 12px !important; opacity: .65; line-height: 1.7 !important; text-align: left !important; }
+.art { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid rgba(23, 33, 79, .14); }
+.art i { flex: 0 0 46px; height: 58px; display: flex; flex-direction: column; border: 3px solid var(--gold-deep); box-shadow: 0 2px 6px rgba(23, 33, 79, .3); }
+.art i s { flex: 1; }
+.art b { display: block; font-size: 16px; letter-spacing: .06em; } .art span { font-size: 12px; opacity: .72; letter-spacing: .06em; }
+.art p { font-size: 13.5px; line-height: 1.8; margin: 6px 0 0; }
+.art.un { opacity: .55; }
+#bookN { font-size: 13px; color: var(--vermilion); letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+
+/* title and passage between paintings */
+#title { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 calc(28px + var(--sr)) calc(54px + var(--sb)) calc(28px + var(--sl)); background: linear-gradient(180deg, rgba(8, 12, 40, 0) 30%, rgba(8, 12, 40, .78) 100%); transition: opacity .9s; z-index: 6; }
+#title.gone { opacity: 0; pointer-events: none; }
+#title h1 { margin: 0; font-size: 54px; font-weight: 900; letter-spacing: .12em; line-height: 1.1; text-shadow: 0 2px 30px rgba(8, 12, 40, .7); }
+#title .tl { margin-top: 14px; font-size: 15px; letter-spacing: .2em; color: var(--mist); max-width: 22em; line-height: 1.8; }
+#start { margin-top: 30px; align-self: flex-start; min-height: 52px; padding: 0 34px; border-radius: 28px; background: var(--gold); color: #2a1e06; font-size: 17px; font-weight: 900; letter-spacing: .3em; box-shadow: 0 8px 30px rgba(230, 194, 86, .35); }
+#start:active { transform: scale(.96); }
+#fade { position: fixed; inset: 0; background: var(--cream); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 30px; opacity: 0; pointer-events: none; transition: opacity .6s; z-index: 8; }
+#fade.on { opacity: 1; pointer-events: auto; }
+#fadeT { font-size: 34px; font-weight: 900; letter-spacing: .2em; margin-right: -.2em; }
+#fadeS { font-size: 14px; letter-spacing: .14em; color: var(--vermilion); text-wrap: balance; line-height: 1.7; }
+#fade::before { content: ""; width: 46px; height: 1px; background: var(--gold-deep); order: 1; }
+#fadeS { order: 2; }
+#err { position: fixed; inset: 0; display: grid; place-items: center; padding: 30px; text-align: center; background: var(--night); z-index: 9; line-height: 1.8; }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; animation-duration: .01s !important; } }
+#title { padding-bottom: calc(30px + var(--sb)); }
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="c"></canvas>
+<div id="vig"></div>
+<div id="hud" class="off">
+  <div id="loc"><span id="locN">梵高小镇</span><span id="locS"></span></div>
+  <div id="fps" hidden></div>
+  <div id="tools">
+    <button class="rb" id="bTod" data-t="2" aria-label="切换白天、黄昏、夜晚">
+      <svg class="i0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3L17 7M7 17l-1.7 1.7"/></svg>
+      <svg class="i1" viewBox="0 0 24 24"><path d="M5 16a7 7 0 0114 0M2.5 16h19M6 19.5h12M12 4.5v2.2M4.9 8.4l1.6 1.6M19.1 8.4l-1.6 1.6"/></svg>
+      <svg class="i2" viewBox="0 0 24 24"><path d="M19.5 14.2A8 8 0 019.8 4.5a8 8 0 109.7 9.7z"/></svg>
+    </button>
+    <button class="rb" id="bBook" aria-label="图鉴"><svg viewBox="0 0 24 24"><rect x="4" y="4.5" width="16" height="15" rx="1"/><rect x="7.2" y="7.7" width="9.6" height="8.6"/><path d="M7.2 14l3-3 2.4 2.2 1.6-1.4 2.6 2.6"/></svg></button>
+    <button class="rb" id="bPhoto" aria-label="装进画框"><svg viewBox="0 0 24 24"><path d="M4 8.5h3.2l1.6-2.3h6.4l1.6 2.3H20v10H4z"/><circle cx="12" cy="13.3" r="3.3"/></svg></button>
+    <button class="rb" id="bSet" aria-label="设置"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg></button>
+  </div>
+  <div id="toast"><div id="toastTag"></div><div id="toastT"></div><div id="toastS"></div></div>
+  <div id="acts">
+    <button class="ab" id="a2" hidden><i></i><span></span></button>
+    <button class="ab" id="a1" hidden><i></i><span></span></button>
+  </div>
+  <div id="stick"><div id="nub"></div></div>
+</div>
+<div id="caption"><div id="capT"></div><div id="capS"></div><div id="capH">轻触任意处返回</div></div>
+<div id="photo"><div class="fr"></div><div id="plate"></div></div>
+
+<div class="scrim" id="card"><div class="sheet">
+  <h2 id="cardN"></h2><div class="sub" id="cardS"></div><p id="cardD"></p>
+  <div class="row"><button class="btn" id="cardClose">告别</button><button class="btn pri" id="cardGo">邀请同行</button></div>
+</div></div>
+
+<div class="scrim" id="set"><div class="sheet">
+  <div class="head"><h2>设置</h2><button class="x" data-close>关闭</button></div>
+  <h3>天色</h3><div class="seg" id="sTod"><button>白天</button><button>黄昏</button><button>夜晚</button><button>流转</button></div>
+  <h3>去往另一幅画</h3><div id="sGo"></div>
+  <h3>画质与帧率</h3><div class="seg" id="sQuality"><button>自动</button><button>流畅优先</button><button>精细优先</button></div>
+  <p class="note">"自动"会按屏幕刷新率调节清晰度，让画面保持满帧。</p>
+  <h3>笔触</h3><div class="seg" id="sStroke"><button>淡</button><button>适中</button><button>厚涂</button></div>
+  <h3>其他</h3><div class="togs"><button class="tog" id="sMusic">音乐</button><button class="tog" id="sTrail">颜料脚印</button><button class="tog" id="sFps">显示帧率</button></div>
+  <button class="btn" id="sDismiss" hidden></button>
+</div></div>
+
+<div class="scrim" id="book"><div class="sheet">
+  <div class="head"><h2>遇见的画</h2><span id="bookN"></span><button class="x" data-close>关闭</button></div>
+  <div id="bookList"></div>
+</div></div>
+
+<div id="title"><h1>画中漫步</h1><div class="tl">走进梵高的小镇，再穿过金色的画框，去往莫奈、北斋、蒙克、修拉和《千里江山图》。</div><button id="start">入画</button></div>
+<div id="fade"><div id="fadeT"></div><div id="fadeS"></div></div>
+<div id="err" hidden></div>
+</div>
+<script>
+/*JS*/
+</script>
+</body>
+</html>
