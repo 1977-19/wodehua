@@ -1,0 +1,56 @@
+name: Build IPA
+on:
+  push:
+    branches: [main]
+    paths: ['index.html', 'ios/**', '.github/workflows/ipa.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and package
+        run: |
+          set -euo pipefail
+          APP=build/Payload/HuaZhong.app
+          mkdir -p "$APP"
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          { xcodebuild -version; echo "SDK $SDK"; } > "$RUNNER_TEMP/build.log" 2>&1
+          xcrun --sdk iphoneos swiftc -O -parse-as-library -target arm64-apple-ios15.0 -sdk "$SDK" ios/App/*.swift -o "$APP/HuaZhong" >> "$RUNNER_TEMP/build.log" 2>&1
+          cp ios/Info.plist "$APP/Info.plist"
+          cp index.html "$APP/index.html"
+          cp ios/icons/*.png "$APP/"
+          printf 'APPL????' > "$APP/PkgInfo"
+          codesign --force --sign - "$APP" >> "$RUNNER_TEMP/build.log" 2>&1 || true
+          (cd build && zip -qry HuaZhongManBu.ipa Payload)
+          ls -l build/HuaZhongManBu.ipa >> "$RUNNER_TEMP/build.log"
+          echo "OK $GITHUB_SHA" >> "$RUNNER_TEMP/build.log"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HuaZhongManBu-ipa
+          path: build/HuaZhongManBu.ipa
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest -y --cleanup-tag || true
+          sleep 3
+          gh release create latest build/HuaZhongManBu.ipa --target "$GITHUB_SHA" --title "画中漫步 IPA" --notes "未签名的 IPA。用 AltStore、Sideloadly 或 TrollStore 安装到 iPhone。"
+          echo "RELEASED" >> "$RUNNER_TEMP/build.log"
+      - name: Keep the build log
+        if: always()
+        run: |
+          set -e
+          cp "$RUNNER_TEMP/build.log" /tmp/build.log 2>/dev/null || echo "no log" > /tmp/build.log
+          echo "sha $GITHUB_SHA  status ${{ job.status }}" >> /tmp/build.log
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout -q --orphan ci-log
+          git rm -rfq . || true
+          cp /tmp/build.log build.log
+          git add -f build.log
+          git commit -qm "build log"
+          git push -f origin ci-log
